@@ -271,7 +271,7 @@ def _(plt):
 
         for i in range(size_ds):
             # Ploteamos los datos reales a la izquierda
-            scatter_true = ax[i, 0].scatter(X_test[:,0], X_test[:,1], c=y_test, s=10)
+            scatter_true = ax[i, 0].scatter(X_test[:,0], X_test[:,1], c=y_test, s=10, cmap="bwr")
             ax[i, 0].set(xlabel=feature_names[0], ylabel=feature_names[1])
             _ = ax[i, 0].legend(
                 scatter_true.legend_elements()[0], target_names, loc="lower right", title="Classes (True)"
@@ -279,7 +279,7 @@ def _(plt):
 
             # Ploteamos los datos predecidos a la derecha
             scatter_pred = ax[i, 1].scatter(X_test[:,0], X_test[:,1],
-                                            c=results["nns"][i]["y_predict"], s=10)
+                                            c=results["nns"][i]["y_predict"], s=10, cmap="bwr")
             ax[i, 1].set(xlabel=feature_names[0], ylabel=feature_names[1])
             _ = ax[i, 1].legend(
                 scatter_pred.legend_elements()[0], target_names, loc="lower right", title="Classes (Pred)"
@@ -288,8 +288,30 @@ def _(plt):
 
         plt.show()
 
-
     return (plot_classification,)
+
+
+@app.cell
+def _(np, plt):
+    def plot_errors(training_avg_error, testing_avg_error, size_ds):
+        xG = np.concatenate([size_ds, size_ds])
+        yG = np.concatenate([training_avg_error, testing_avg_error])
+        cG = np.concatenate([np.zeros(len(size_ds), dtype=int),
+                             np.ones(len(size_ds), dtype=int)])
+
+        plt.figure(figsize=(8,5))
+        plt.plot(size_ds, training_avg_error, marker = 'o', label = 'Train')
+        plt.plot(size_ds, testing_avg_error, marker = 'o', label = 'Test')
+        plt.xlabel('tamaño dataset')
+        plt.ylabel('avg error')
+        plt.xscale('log')
+        plt.ylim(0, 1)
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+
+    return
 
 
 @app.cell
@@ -300,7 +322,7 @@ def _():
     return (spiral,)
 
 
-@app.cell
+@app.cell(disabled=True)
 def _(MLPClassifier, entrenar_red, np, skl, spiral):
     def res_ej1():
         # Generamos los datos
@@ -375,11 +397,265 @@ def _(mo):
     return
 
 
+@app.cell
+def _(cargar_csv, skl):
+    def cargar_datos_ej2(seed):
+        # Cargamos los datos
+        X, y = cargar_csv('./data/dos_elipses.data')
+        X_test, y_test = cargar_csv('./data/dos_elipses.test')
+        # Hacemos el split de training y testing
+        X2, _, y2, _ = skl.model_selection.train_test_split(X, y, test_size=0.5, random_state = seed)
+
+        # spliteamos el training en training y validacion
+        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X2, y2, test_size=0.2, random_state = seed)
+        return X_test, X_train, X_val, y_test, y_train, y_val
+
+    return (cargar_datos_ej2,)
+
+
+@app.cell
+def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
+    def res_ej2(eta, alfa):
+        iter = 10
+
+        # Parámetros 1
+        # eta := learning rate | alfa := momentum
+        sub_epocas = 50          # numero de epocas que entrena cada vez
+        eval = 300              # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        N2 = 6     # neuronas en la capa oculta
+
+        nns = []
+
+        for i in range(iter):
+            # Generamos los datos
+            X_test, X_train, X_val, y_test, y_train, y_val = cargar_datos_ej2(i)
+
+            clasif = MLPClassifier(
+                hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
+                batch_size=1, learning_rate='constant', learning_rate_init=eta,
+                momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
+                max_iter=sub_epocas
+            )
+
+             # Corremos el entrenamiento
+            clasif, e_train, e_val, e_test = entrenar_red(clasif, eval, X_train, y_train, X_val, y_val, X_test, y_test)  
+
+            nns.append( {"clasif"    : clasif,
+                         "y_predict" : clasif.predict(X_test),
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test} )
+
+        avg_e_train = np.mean([nn["e_train"] for nn in nns])
+        avg_e_val = np.mean([nn["e_val"] for nn in nns])
+        avg_e_test = np.mean([nn["e_test"] for nn in nns])
+
+        return { "avg_e_train"  : avg_e_train,
+                 "avg_e_val"  : avg_e_val,
+                 "avg_e_test"     : avg_e_test,
+                 "learning_rate" : eta,
+                 "momentum" : alfa
+               }
+
+    return (res_ej2,)
+
+
+@app.cell
+def _():
+    table_ej2 = {
+         "avg_e_train"  : [],
+         "avg_e_val"  : [],
+         "avg_e_test"     : [],
+         "learning_rate" : [],
+         "momentum" : []
+    }
+
+    # Agrega un elemento a la tabla_ej2 con el siguiente formato
+
+    def append_table_ej2(res):
+        table_ej2["avg_e_train"].append(res["avg_e_train"])
+        table_ej2["avg_e_val"].append(res["avg_e_val"])
+        table_ej2["avg_e_test"].append(res["avg_e_test"])
+        table_ej2["learning_rate"].append(res["learning_rate"])
+        table_ej2["momentum"].append(res["momentum"])
+
+    return append_table_ej2, table_ej2
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.1, 0)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.01, 0)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.001, 0)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.1, 0)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.1, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.1, 0.9)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.20, 0.9)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.20, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.30, 0.9)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.30, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.01, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.01, 0.9)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.001, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.001, 0.9)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.15, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.25, 0.5)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.25, 0.75)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.25, 0.25)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.275, 0.25)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.225, 0.25)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.25, 0.20)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell(disabled=True)
+def _(append_table_ej2, res_ej2):
+    _res = res_ej2(0.25, 0.30)
+    append_table_ej2(_res)
+    return
+
+
+@app.cell
+def _(pd, table_ej2):
+    # Creamos y mostramos la tabla
+
+    show_table_ej2 = pd.DataFrame(table_ej2)
+    show_table_ej2
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # Ejercicio 3. Regularización
     """)
+    return
+
+
+@app.cell
+def _():
     return
 
 
