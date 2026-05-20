@@ -21,6 +21,8 @@ def _(mo):
 
 @app.cell
 def _():
+    import joblib
+    import os
     import math
     import matplotlib.pyplot as plt
     import numpy as np
@@ -37,7 +39,9 @@ def _():
         MLPClassifier,
         MLPRegressor,
         deepcopy,
+        joblib,
         np,
+        os,
         pd,
         plt,
         skl,
@@ -254,14 +258,6 @@ def _(X_train, plt, y_train):
     return
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Ejercicio 1. Capacidad de Modelado.
-    """)
-    return
-
-
 @app.cell
 def _(plt):
     def plot_classification(results, size_ds, feature_names, target_names):
@@ -293,24 +289,28 @@ def _(plt):
 
 @app.cell
 def _(np, plt):
-    def plot_errors(training_avg_error, testing_avg_error, size_ds):
-        xG = np.concatenate([size_ds, size_ds])
-        yG = np.concatenate([training_avg_error, testing_avg_error])
-        cG = np.concatenate([np.zeros(len(size_ds), dtype=int),
-                             np.ones(len(size_ds), dtype=int)])
+    def plot_errors(training_error, testing_error, val_error, epocas):
+        rango = np.array(range(epocas))
 
-        plt.figure(figsize=(8,5))
-        plt.plot(size_ds, training_avg_error, marker = 'o', label = 'Train')
-        plt.plot(size_ds, testing_avg_error, marker = 'o', label = 'Test')
-        plt.xlabel('tamaño dataset')
-        plt.ylabel('avg error')
-        plt.xscale('log')
-        plt.ylim(0, 1)
-        plt.legend()
+        plt.plot(rango, training_error, label="train", linestyle=":")
+        plt.plot(rango, testing_error, label="test", linestyle="-")
+        plt.plot(rango, val_error, label="validation", linestyle="-.")
+
+        plt.xlabel('Epocas')
+        plt.ylabel('Error')
         plt.grid()
+        plt.legend()
         plt.show()
+        # plt.figure(figsize=(8,5))
+        # plt.ylim(0, 1)
+    return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Ejercicio 1. Capacidad de Modelado.
+    """)
     return
 
 
@@ -322,7 +322,7 @@ def _():
     return (spiral,)
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(MLPClassifier, entrenar_red, np, skl, spiral):
     def res_ej1():
         # Generamos los datos
@@ -352,7 +352,8 @@ def _(MLPClassifier, entrenar_red, np, skl, spiral):
                 hidden_layer_sizes=(N2[i],), activation='logistic', solver='sgd', alpha=0.0,
                 batch_size=1, learning_rate='constant', learning_rate_init=eta,
                 momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
-                max_iter=sub_epocas
+                max_iter=sub_epocas,
+                random_state = 0
             )
 
              # Corremos el entrenamiento
@@ -373,8 +374,18 @@ def _(MLPClassifier, entrenar_red, np, skl, spiral):
                  "nns"     : res 
                }
 
-    ej1 = res_ej1()
-    ej1
+    return (res_ej1,)
+
+
+@app.cell
+def _(joblib, os, res_ej1):
+    _archivo_cache = "resultados_ej1.pkl"
+
+    if os.path.exists(_archivo_cache):
+        ej1 = joblib.load(_archivo_cache)
+    else:
+        ej1 = res_ej1()
+        joblib.dump(ej1, _archivo_cache)
     return (ej1,)
 
 
@@ -386,6 +397,36 @@ def _(ej1, plot_classification):
                          size,
                         ["rho", "theta"],
                         ["spiral 1", "spiral 2"])
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Conclusión
+    En las gráficas podemos ver que mientras incrementamos el numero de
+    neuronas en la hidden layer obtenemos una mejor clasificación. Esto se
+    debe, a que cuando combinamos sigmoids (las de la capa intermedia en el
+    perceptron final) podemos aproximamos de mejor manera, es decir,
+    obtenemos una mejor clasificación.
+
+    Sin embargo, agregar neuronas en la capa intermedia puede provocar
+    overfitting, ya que la red neuronal aprende ruido de los datos de
+    entrenamiento. Pareciera no ser el caso de este ejercicio.
+
+    Comparando con la clasificación hecha con arboles de decision vemos que,
+    a pesar del tiempo de entrenamiento de las redes neuronales (que es
+    mayor) se obtiene una peor clasificación. De esta manera, podemos decir
+    que las redes neuronales son mas costosas que los arboles de decision.
+
+    En nuestra opinion, la razón de la superioridad de arboles en la
+    clasificación viene de que los arboles de decision son un método de
+    aprendizaje para problemas discretos, en particular, clasificación.
+    Por otro lado, la función MLPClassifier utiliza regresión y *softmax*
+    para clasificar (herramientas para transformar un problema continuo
+    en uno discreto), creemos que esta conversion lleva a una peor
+    clasificación.
+    """)
     return
 
 
@@ -435,7 +476,7 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
                 hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
                 batch_size=1, learning_rate='constant', learning_rate_init=eta,
                 momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
-                max_iter=sub_epocas
+                max_iter=sub_epocas, random_state=i
             )
 
              # Corremos el entrenamiento
@@ -451,7 +492,8 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
         avg_e_val = np.mean([nn["e_val"] for nn in nns])
         avg_e_test = np.mean([nn["e_test"] for nn in nns])
 
-        return { "avg_e_train"  : avg_e_train,
+        return { "nns" : nns,
+                 "avg_e_train"  : avg_e_train,
                  "avg_e_val"  : avg_e_val,
                  "avg_e_test"     : avg_e_test,
                  "learning_rate" : eta,
@@ -462,187 +504,96 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
 
 
 @app.cell
-def _():
-    table_ej2 = {
-         "avg_e_train"  : [],
-         "avg_e_val"  : [],
-         "avg_e_test"     : [],
-         "learning_rate" : [],
-         "momentum" : []
-    }
+def _(joblib, os, res_ej2):
+    _archivo_cache = "resultados_ej2.pkl"
 
-    # Agrega un elemento a la tabla_ej2 con el siguiente formato
+    if os.path.exists(_archivo_cache):
+        table_ej2 = joblib.load(_archivo_cache)
 
-    def append_table_ej2(res):
-        table_ej2["avg_e_train"].append(res["avg_e_train"])
-        table_ej2["avg_e_val"].append(res["avg_e_val"])
-        table_ej2["avg_e_test"].append(res["avg_e_test"])
-        table_ej2["learning_rate"].append(res["learning_rate"])
-        table_ej2["momentum"].append(res["momentum"])
+    else:
+        table_ej2 = {
+             "avg_e_train": [],
+             "avg_e_val": [],
+             "avg_e_test": [],
+             "learning_rate": [],
+             "momentum": []
+        }
 
-    return append_table_ej2, table_ej2
+        _casos = [
+            (0.1, 0), (0.01, 0), (0.001, 0), (0.1, 0.5), (0.1, 0.9),
+            (0.20, 0.9), (0.20, 0.5), (0.30, 0.9), (0.30, 0.5),
+            (0.01, 0.5), (0.01, 0.9), (0.001, 0.5), (0.001, 0.9),
+            (0.15, 0.5), (0.25, 0.5), (0.25, 0.75), (0.25, 0.25),
+            (0.275, 0.25), (0.225, 0.25), (0.25, 0.20), (0.25, 0.30)
+        ]
 
+        for _eta, _alfa in _casos:
+            _res = res_ej2(_eta, _alfa)
+            table_ej2["nns"].append(_res["nns"])
+            table_ej2["avg_e_train"].append(_res["avg_e_train"])
+            table_ej2["avg_e_val"].append(_res["avg_e_val"])
+            table_ej2["avg_e_test"].append(_res["avg_e_test"])
+            table_ej2["learning_rate"].append(_res["learning_rate"])
+            table_ej2["momentum"].append(_res["momentum"])
 
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.1, 0)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.01, 0)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.001, 0)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.1, 0)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.1, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.1, 0.9)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.20, 0.9)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.20, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.30, 0.9)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.30, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.01, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.01, 0.9)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.001, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.001, 0.9)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.15, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.25, 0.5)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.25, 0.75)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.25, 0.25)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.275, 0.25)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.225, 0.25)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.25, 0.20)
-    append_table_ej2(_res)
-    return
-
-
-@app.cell(disabled=True)
-def _(append_table_ej2, res_ej2):
-    _res = res_ej2(0.25, 0.30)
-    append_table_ej2(_res)
-    return
+        joblib.dump(table_ej2, _archivo_cache)
+    return (table_ej2,)
 
 
 @app.cell
 def _(pd, table_ej2):
     # Creamos y mostramos la tabla
-
     show_table_ej2 = pd.DataFrame(table_ej2)
+    show_table_ej2 = show_table_ej2.drop("nns", axis=1)
+    
     show_table_ej2
+    return
+
+
+@app.cell
+def _():
+    # Ploteamos los errores
+
+
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Conclusión
+    Podemos concluir que los mejores valores de learning rate y momentum para
+    esta red son los siguientes:
+    Para obtener estos valores tuvimos en cuenta como afecta la modificacion
+    de dichos parametros. Recordemos primero que implica cada parametro.
+
+    **Learning rate**
+    El learning rate es un valor que indica que tanta importancia le damos, al momento de ajustar
+    los pesos, a los errores de aproximación (que tanto aprendemos de los errores).
+
+    Un learning rate bajo hace que los pesos se ajusten de a poco. Esto puede provocar que el valor de los pesos se quede estancado en un mínimo local (ya que la derivada
+    parcial es igual a 0). En contraposición, un learning rate alto ajusta los pesos de manera
+    mas agresiva, esto puede provocar que los valores de los pesos se escapen o sobrepasen
+    mínimos locales, pero puede que además sobrepasen al mínimo global.
+
+    **Momentum**
+    El momentum agrega un término en la corrección de los pesos de cada
+    iteración del algoritmo (suma momentum * variacion_peso). Representa la inercia
+    de la variación de los pesos. Esto logra que aún cayendo en un mínimo local (punto
+    donde la la derivada parcial del error se hace 0) nos podamos salir del mismo
+    (ya que este término no se anula por más que la derivada sea 0).
+
+    Ahora bien, valores muy altos pueden generar que nos escapemos incluso del mínimo global.
+    Por otro lado, un valor muy pequeño puede hacer que no sobrepasemos los minimos locales. Un
+    valor adecuado nos ayudara a sobrepasar minimos locales y no escaparnos del minimo global.
+
+    Volviendo a nuestro ejercicio, en los casos donde usamos momentum y
+    learning rate muy alto tengan errores mucho mas altos que en otros casos.
+    Lo mismo pasa en los casos con learning rate y momentum muy bajos.
+
+    En los casos intermedios fuimos probando diferentes valores hasta que
+    obtuvimos un error cercano al 10%. LR = 0.275, M = 0.25.
+    """)
     return
 
 
@@ -655,7 +606,74 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(cargar_csv, skl):
+    def cargar_datos_ej3(val_per, seed):
+        # Cargamos los datos
+        X, y = cargar_csv('./data/ikeda.data')
+
+        # Spliteamos el training y validacion
+        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per, random_state = seed)
+        return X_train, X_val, y_train, y_val
+
+    return (cargar_datos_ej3,)
+
+
+@app.cell
+def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, skl):
+    def res_ej3():
+        # Parámetros
+        eta = 0.01             # eta := learning rate
+        alfa = 0.9             # alfa := momentum
+        sub_epocas = 50          # numero de epocas que entrena cada vez
+        eval = 400              # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        N2 = 30     # neuronas en la capa oculta
+
+        val_percs = [0.05, 0.25, 0.5]
+        nns = []
+
+        seed = 0
+
+        # Cargamos los datos de test
+        X, y = cargar_csv('./data/ikeda.test')
+        # Hacemos el split de testing (~ 2000 datos de train)
+        _, X_test, _, y_test = skl.model_selection.train_test_split(X, y, test_size=0.416, seed = seed)
+
+        for i in range(len(val_percs)):
+            val_perc = val_percs[i]
+            train_perc = 1 - val_perc
+
+            # Generamos los datos
+            X_train, X_val, y_train, y_val = cargar_datos_ej3(val_perc, seed)
+
+            # Defino MLP para regresión
+            regr = MLPRegressor(
+                hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
+                batch_size=1, learning_rate='constant', learning_rate_init=eta,
+                momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
+                max_iter=sub_epocas
+            )
+
+             # Corremos el entrenamiento
+            regr, e_train, e_val, e_test = entrenar_red(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)  
+
+            nns.append( {"nn"        : regr,
+                         "y_predict" : regr.predict(X_test),
+                         "train_perc" : train_perc,
+                         "val_perc" : val_perc,
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test} )
+
+
+        return {
+                "X_test" : X_test,
+                 "y_test" : y_test,
+                 "nns"         : nns,
+                 "train_perc" : eta,
+                 "val_perc"   : alfa
+               }
+
     return
 
 
