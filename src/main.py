@@ -40,6 +40,7 @@ def _():
         MLPRegressor,
         deepcopy,
         joblib,
+        mean_squared_error,
         np,
         os,
         pd,
@@ -123,14 +124,14 @@ def _(mo):
 
 @app.cell
 def _(pd):
-    def cargar_csv(path, xcols=2):
+    def cargar_csv(path, xcols=2, separator=','):
         """
         Argumentos:
           path (str): ruta al archivo csv a cargar
           xcols (int): cantidad de columnas que representan las entradas,
             la columna restante representara la clase o dato de salida
         """
-        df = pd.read_csv(path, header=None)
+        df = pd.read_csv(path, header=None, sep=separator)
         X = df.loc[:, 0:(xcols-1)]
         y = df.loc[:, xcols]
         return X,y
@@ -139,11 +140,12 @@ def _(pd):
 
 
 @app.cell
-def _(deepcopy, zero_one_loss):
+def _(deepcopy, mean_squared_error, zero_one_loss):
     def entrenar_red(red, evaluaciones,
                      X_train, y_train,
                      X_val,   y_val,
-                     X_test,  y_test):
+                     X_test,  y_test,
+                     type = "clasf"):
         """
         Función que entrena una red ya definida previamente "evaluaciones" veces,
         cada vez entrenando un número de épocas elegido al crear la red y midiendo
@@ -167,6 +169,12 @@ def _(deepcopy, zero_one_loss):
         error_test = []
         best_val = 1.0
         best_red = red
+
+        error_function = zero_one_loss
+
+        if (type == "regr"):
+            error_function = mean_squared_error
+
         for epoch in range(evaluaciones):
           # red.partial_fit(X_train, y_train, classes=[0,1])
           ## Podríamos llamar partial_fit para realizar una sóla pasada a la vez,
@@ -177,10 +185,10 @@ def _(deepcopy, zero_one_loss):
           red.fit(X_train, y_train)
           # error de training
           y_pred_train = red.predict(X_train)
-          error_train.append(zero_one_loss(y_train, y_pred_train))
+          error_train.append(error_function(y_train, y_pred_train))
           # error de validacion
           y_pred_val = red.predict(X_val)
-          cur_val = zero_one_loss(y_val, y_pred_val)
+          cur_val = error_function(y_val, y_pred_val)
           error_val.append(cur_val)
           # error de test
           error_test.append(1 - red.score(X_test, y_test))
@@ -288,22 +296,25 @@ def _(plt):
 
 
 @app.cell
-def _(np, plt):
-    def plot_errors(training_error, testing_error, val_error, epocas):
-        rango = np.array(range(epocas))
+def _(np):
+    def plot_errors(graph, training_error, testing_error, val_error, super_epocas, sub_epocas):
+        rango = np.array(range(super_epocas)) * sub_epocas
 
-        plt.plot(rango, training_error, label="train", linestyle=":")
-        plt.plot(rango, testing_error, label="test", linestyle="-")
-        plt.plot(rango, val_error, label="validation", linestyle="-.")
+        graph.plot(rango, training_error, label="train", linestyle=":")
+        graph.plot(rango, testing_error, label="test", linestyle="-")
+        graph.plot(rango, val_error, label="validation", linestyle="-.")
 
-        plt.xlabel('Epocas')
-        plt.ylabel('Error')
-        plt.grid()
-        plt.legend()
-        plt.show()
+        #graph.xlabel('Epocas')
+        #graph.ylabel('Error')
+
+        graph.grid(True)
+        graph.legend()
         # plt.figure(figsize=(8,5))
         # plt.ylim(0, 1)
-    return
+
+        return graph
+
+    return (plot_errors,)
 
 
 @app.cell(hide_code=True)
@@ -512,6 +523,7 @@ def _(joblib, os, res_ej2):
 
     else:
         table_ej2 = {
+             "nns" : [],
              "avg_e_train": [],
              "avg_e_val": [],
              "avg_e_test": [],
@@ -519,7 +531,7 @@ def _(joblib, os, res_ej2):
              "momentum": []
         }
 
-        _casos = [
+        _cases = [
             (0.1, 0), (0.01, 0), (0.001, 0), (0.1, 0.5), (0.1, 0.9),
             (0.20, 0.9), (0.20, 0.5), (0.30, 0.9), (0.30, 0.5),
             (0.01, 0.5), (0.01, 0.9), (0.001, 0.5), (0.001, 0.9),
@@ -527,7 +539,7 @@ def _(joblib, os, res_ej2):
             (0.275, 0.25), (0.225, 0.25), (0.25, 0.20), (0.25, 0.30)
         ]
 
-        for _eta, _alfa in _casos:
+        for _eta, _alfa in _cases:
             _res = res_ej2(_eta, _alfa)
             table_ej2["nns"].append(_res["nns"])
             table_ej2["avg_e_train"].append(_res["avg_e_train"])
@@ -545,7 +557,7 @@ def _(pd, table_ej2):
     # Creamos y mostramos la tabla
     show_table_ej2 = pd.DataFrame(table_ej2)
     show_table_ej2 = show_table_ej2.drop("nns", axis=1)
-    
+
     show_table_ej2
     return
 
@@ -553,8 +565,6 @@ def _(pd, table_ej2):
 @app.cell
 def _():
     # Ploteamos los errores
-
-
     return
 
 
@@ -607,44 +617,44 @@ def _(mo):
 
 @app.cell
 def _(cargar_csv, skl):
-    def cargar_datos_ej3(val_per, seed):
+    def cargar_datos_ej3(val_per):
         # Cargamos los datos
-        X, y = cargar_csv('./data/ikeda.data')
+        X, y = cargar_csv('./data/ikeda.data', 5, separator=r'\s+')
 
         # Spliteamos el training y validacion
-        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per, random_state = seed)
+        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per)
         return X_train, X_val, y_train, y_val
 
     return (cargar_datos_ej3,)
 
 
 @app.cell
-def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, skl):
-    def res_ej3():
+def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, np, skl):
+    def res_ej3(val_perc):
+        iter = 10
+
         # Parámetros
         eta = 0.01             # eta := learning rate
         alfa = 0.9             # alfa := momentum
         sub_epocas = 50          # numero de epocas que entrena cada vez
-        eval = 400              # numero de veces que realizaremos sub-epocas
+        eval = 1#400              # numero de veces que realizaremos sub-epocas
         # epocas ~= sub_epocas * super_epocas
         N2 = 30     # neuronas en la capa oculta
 
-        val_percs = [0.05, 0.25, 0.5]
-        nns = []
-
-        seed = 0
-
         # Cargamos los datos de test
-        X, y = cargar_csv('./data/ikeda.test')
+        X, y = cargar_csv('./data/ikeda.test', xcols=5, separator=r'\s+')
         # Hacemos el split de testing (~ 2000 datos de train)
-        _, X_test, _, y_test = skl.model_selection.train_test_split(X, y, test_size=0.416, seed = seed)
+        _, X_test, _, y_test = skl.model_selection.train_test_split(X, y, test_size=0.416)
 
-        for i in range(len(val_percs)):
-            val_perc = val_percs[i]
-            train_perc = 1 - val_perc
+        train_perc = 1 - val_perc
 
+        errs_train = []
+        errs_val = []
+        errs_test = []
+
+        for i in range(iter):
             # Generamos los datos
-            X_train, X_val, y_train, y_val = cargar_datos_ej3(val_perc, seed)
+            X_train, X_val, y_train, y_val = cargar_datos_ej3(val_perc)
 
             # Defino MLP para regresión
             regr = MLPRegressor(
@@ -655,25 +665,78 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, skl):
             )
 
              # Corremos el entrenamiento
-            regr, e_train, e_val, e_test = entrenar_red(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)  
+            regr, e_train, e_val, e_test = entrenar_red(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test, type = "regr")
 
-            nns.append( {"nn"        : regr,
-                         "y_predict" : regr.predict(X_test),
-                         "train_perc" : train_perc,
-                         "val_perc" : val_perc,
-                         "e_train"   : e_train,
-                         "e_val"     : e_val,
-                         "e_test"    : e_test} )
+            errs_train.append(e_train)
+            errs_val.append(e_val)
+            errs_test.append(e_test)
 
+        e_train = np.sum(errs_train, axis=0)
+        e_val = np.sum(errs_train, axis=0)
+        e_test = np.sum(errs_train, axis=0)
 
-        return {
-                "X_test" : X_test,
-                 "y_test" : y_test,
-                 "nns"         : nns,
-                 "train_perc" : eta,
-                 "val_perc"   : alfa
+        return { 
+                "super_epocas" : eval,
+                "sub_epocas" : sub_epocas,
+                "e_train"  : e_train,
+                "e_val"  : e_val,
+                "e_test"     : e_test,
+                "train_perc" : train_perc,
+                "val_perc" : val_perc
                }
 
+    return (res_ej3,)
+
+
+@app.cell
+def _(joblib, os, res_ej3):
+    _archivo_cache = "resultados_ej3.pkl"
+
+    ej3_cases = [0.05, 0.25, 0.5]
+
+    if os.path.exists(_archivo_cache):
+        ej3 = joblib.load(_archivo_cache)
+    else:
+
+        ej3 = {
+                "super_epocas" : [],
+                "sub_epocas" : [],
+                "e_train": [],
+                "e_val": [],
+                "e_test": [],
+                "train_perc" : [],
+                "val_perc" : []
+               }
+
+        for c in ej3_cases:
+            _res = res_ej3(c)
+            ej3["super_epocas"].append(_res["super_epocas"])
+            ej3["sub_epocas"].append(_res["sub_epocas"])
+            ej3["e_train"].append(_res["e_train"])
+            ej3["e_val"].append(_res["e_val"])
+            ej3["e_test"].append(_res["e_test"])
+            ej3["train_perc"].append(_res["train_perc"])
+            ej3["val_perc"].append(_res["val_perc"])
+
+        joblib.dump(ej3, _archivo_cache)
+    return ej3, ej3_cases
+
+
+@app.cell
+def _(ej3, ej3_cases, plot_errors, plt):
+    # Graficamos los errores
+    _, ax = plt.subplots(1, len(ej3_cases), sharey=True, figsize=(20, 20), squeeze=False)
+    print(ej3["super_epocas"])
+
+    for i in range(len(ej3_cases)):
+        plot_errors(ax[0, i], ej3["e_train"],
+                    ej3["e_test"], ej3["e_val"],
+                    ej3["super_epocas"][0], ej3["sub_epocas"])
+
+        ax[0, i].set_title(f"Validacion {ej3_cases[i]}%")
+    
+
+    plt.show()
     return
 
 
