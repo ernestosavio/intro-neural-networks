@@ -31,6 +31,7 @@ def _():
     import sklearn as skl
     from sklearn.neural_network import MLPRegressor
     from sklearn.neural_network import MLPClassifier
+    from concurrent.futures import ProcessPoolExecutor
     from sklearn.metrics import mean_squared_error, zero_one_loss
 
     from copy import deepcopy
@@ -38,6 +39,7 @@ def _():
     return (
         MLPClassifier,
         MLPRegressor,
+        ProcessPoolExecutor,
         deepcopy,
         joblib,
         mean_squared_error,
@@ -140,12 +142,11 @@ def _(pd):
 
 
 @app.cell
-def _(deepcopy, mean_squared_error, zero_one_loss):
+def _(deepcopy, zero_one_loss):
     def entrenar_red(red, evaluaciones,
                      X_train, y_train,
                      X_val,   y_val,
-                     X_test,  y_test,
-                     type = "clasf"):
+                     X_test,  y_test):
         """
         Función que entrena una red ya definida previamente "evaluaciones" veces,
         cada vez entrenando un número de épocas elegido al crear la red y midiendo
@@ -170,11 +171,6 @@ def _(deepcopy, mean_squared_error, zero_one_loss):
         best_val = 1.0
         best_red = red
 
-        error_function = zero_one_loss
-
-        if (type == "regr"):
-            error_function = mean_squared_error
-
         for epoch in range(evaluaciones):
           # red.partial_fit(X_train, y_train, classes=[0,1])
           ## Podríamos llamar partial_fit para realizar una sóla pasada a la vez,
@@ -185,10 +181,10 @@ def _(deepcopy, mean_squared_error, zero_one_loss):
           red.fit(X_train, y_train)
           # error de training
           y_pred_train = red.predict(X_train)
-          error_train.append(error_function(y_train, y_pred_train))
+          error_train.append(zero_one_loss(y_train, y_pred_train))
           # error de validacion
           y_pred_val = red.predict(X_val)
-          cur_val = error_function(y_val, y_pred_val)
+          cur_val = zero_one_loss(y_val, y_pred_val)
           error_val.append(cur_val)
           # error de test
           error_test.append(1 - red.score(X_test, y_test))
@@ -315,6 +311,159 @@ def _(np):
         return graph
 
     return (plot_errors,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Algunas funciones que fuimos usando
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Funciones de entrenamiento
+    """)
+    return
+
+
+@app.cell
+def _(deepcopy, mean_squared_error, np):
+    def entrenar_red_wd(
+        red,
+        evaluaciones,
+        gamma,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        ord=1,
+    ):
+        """
+        Función que entrena una red para regresión ya definida
+        previamente "evaluaciones" veces,
+        cada vez entrenando un número de épocas elegido al crear la red y midiendo
+        el error en train, test y la suma de los pesos cada uno al cuadrado
+        (o su valor absoluto, dependiendo del argumento ord) al terminar ese paso
+        de entrenamiento.
+        Guarda y devuelve la red en el paso de evaluación que da el mínimo error total
+        (ErrorTrain + SumaCuadradaPesos).
+
+        Argumentos:
+          red: red neuronal predefinida
+          evaluaciones (int): las veces que evalua
+          X_{}: los conjuntos de valores de entrada de train, y test
+          y_{}: los conjuntos de valores de salida o clase
+
+        Salidas:
+          best_red: la red entrenada en el mínimo error total
+          error_{}: los errores de: train, test medidos en cada evaluación,
+          la suma de los pesos cada uno al cuadrado (o su valor absoluto,
+          dependiendo del argumento ord).
+        """
+
+        if (ord != 1) and (ord != 2):
+            print("ord Incorrecto, utilice ord=1 o ord=2")
+            return red, [], [], []
+
+        error_train = []
+        error_test = []
+        norm_weights = []
+        min_error = 1.0
+        best_red = red
+
+        for epoch in range(evaluaciones):
+            red.fit(X_train, y_train)
+
+            # Error de training
+            y_pred_train = red.predict(X_train)
+            e_train = mean_squared_error(y_train, y_pred_train)
+            error_train.append(e_train)
+
+            # Obtenemos los pesos de la red
+            weights = red.coefs_
+
+            # Obtenemos la norma 'ord' de los pesos en la evaluación
+            # weights[0] -> Pesos que van desde la capa de entrada a la capa oculta
+            # weights[1] -> Pesos que van desde la capa oculta a la capa de salida
+            cur_norm_weights = np.linalg.norm(np.concatenate((weights[0].flatten(),
+                                                              weights[1].flatten())
+                                                            ), ord)
+            if ord == 2:
+                cur_norm_weights = cur_norm_weights * cur_norm_weights
+
+            norm_weights.append(cur_norm_weights)
+
+            # Error de test
+            y_predict_test = red.predict(X_test)
+            error_test.append(mean_squared_error(y_predict_test, y_test))
+
+            # Error total
+            total_error = e_train + gamma * cur_norm_weights
+
+            if min_error > total_error:
+                min_error = total_error
+                best_red = deepcopy(red)
+        return best_red, error_train, error_test, norm_weights
+
+    return (entrenar_red_wd,)
+
+
+@app.cell
+def _(deepcopy, mean_squared_error):
+    def entrenar_red_rgr(red, evaluaciones,
+                         X_train, y_train,
+                         X_val,   y_val,
+                         X_test,  y_test):
+        """
+        Función que entrena una red ya definida previamente "evaluaciones" veces,
+        cada vez entrenando un número de épocas elegido al crear la red y midiendo
+        el error en train, validación y test al terminar ese paso de entrenamiento.
+        Guarda y devuelve la red en el paso de evaluación que da el mínimo error de
+        validación.
+
+        Argumentos:
+          red: red neuronal predefinida
+          evaluaciones (int): las veces que evalua
+          X_{}: los conjuntos de valores de entrada de train, validación y test
+          y_{}: los conjuntos de valores de salida o clase
+
+        Salidas:
+          best_red: la red entrenada en el mínimo de validación
+          error_{}: los errores de: train, validación y test medidos en cada
+            evaluación
+        """
+        error_train = []
+        error_val = []
+        error_test = []
+        best_val = 1.0
+        best_red = red
+
+        for epoch in range(evaluaciones):
+          # Entrenamos la red
+          red.fit(X_train, y_train)
+        
+          # Error de training
+          y_pred_train = red.predict(X_train)
+          error_train.append(mean_squared_error(y_train, y_pred_train))
+        
+          # Error de validacion
+          y_pred_val = red.predict(X_val)
+          cur_val = mean_squared_error(y_val, y_pred_val)
+          error_val.append(cur_val)
+        
+          # Error de test
+          y_pred_test = red.predict(X_test)
+          error_test.append(mean_squared_error(y_pred_test, y_test))
+        
+          if best_val > cur_val:
+            best_val = cur_val
+            best_red = deepcopy(red)
+        return best_red, error_train, error_val, error_test
+
+    return (entrenar_red_rgr,)
 
 
 @app.cell(hide_code=True)
@@ -448,6 +597,14 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos la red
+    """)
+    return
+
+
 @app.cell
 def _(cargar_csv, skl):
     def cargar_datos_ej2():
@@ -551,6 +708,14 @@ def _(joblib, os, res_ej2):
     return (table_ej2,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos los errores
+    """)
+    return
+
+
 @app.cell
 def _(pd, table_ej2):
     # Creamos y mostramos la tabla
@@ -561,10 +726,37 @@ def _(pd, table_ej2):
     return
 
 
-@app.cell
-def _():
+app._unparsable_cell(
+    r"""
+    # Tomamos la red neuronal con menor error de test promedio
+    # Primero tomamos el menor error promedio de test
+    min_avg_test_e = min(table_ej2["avg_e_test"])
+
+    # Obtenemos el índice de la entrada del menor error promedio de test
+    i = table_ej2["avg_e_test"].index(min_avg_test_e)
+
+    # Nos quedamos con la red neuronal que tiene ese error de test promedio
+    nn = table_ej2["nns"][i]
+
+
     # Ploteamos los errores
-    return
+    _, ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+
+    plot_errors(ax[0 0], ej3["e_train"][_i],
+                    ej3["e_test"][_i], ej3["e_val"][_i],
+                    ej3["super_epocas"][0], ej3["sub_epocas"][0])
+
+        ax[0, 0].set_title(f"Errores")
+
+
+    plt.show()
+
+
+
+    """,
+    name="_"
+)
 
 
 @app.cell(hide_code=True)
@@ -628,7 +820,7 @@ def _(cargar_csv, skl):
 
 
 @app.cell
-def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, np, skl):
+def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, np, skl):
     def res_ej3(val_perc):
         iter = 10
 
@@ -664,7 +856,7 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, np, skl):
             )
 
              # Corremos el entrenamiento
-            regr, e_train, e_val, e_test = entrenar_red(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test, type = "regr")
+            regr, e_train, e_val, e_test = entrenar_red_rgr(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)
 
             errs_train.append(e_train)
             errs_val.append(e_val)
@@ -688,7 +880,7 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red, np, skl):
 
 
 @app.cell
-def _(joblib, os, res_ej3):
+def _(ProcessPoolExecutor, joblib, os, res_ej3):
     _archivo_cache = "resultados_ej3.pkl"
 
     ej3_cases = [0.05, 0.25, 0.5]
@@ -707,8 +899,11 @@ def _(joblib, os, res_ej3):
                 "val_perc" : []
                }
 
-        for _c in ej3_cases:
-            _res = res_ej3(_c)
+        # Paralelizamos cada caso
+        with ProcessPoolExecutor() as executor:
+            results = list(executor.map(res_ej3, ej3_cases))
+
+        for _res in results:
             ej3["super_epocas"].append(_res["super_epocas"])
             ej3["sub_epocas"].append(_res["sub_epocas"])
             ej3["e_train"].append(_res["e_train"])
@@ -716,7 +911,7 @@ def _(joblib, os, res_ej3):
             ej3["e_test"].append(_res["e_test"])
             ej3["train_perc"].append(_res["train_perc"])
             ej3["val_perc"].append(_res["val_perc"])
-
+    
         joblib.dump(ej3, _archivo_cache)
     return ej3, ej3_cases
 
@@ -747,91 +942,8 @@ def _(mo):
 
 
 @app.cell
-def _(deepcopy, mean_squared_error, np):
-    def entrenar_red_wd(
-        red,
-        evaluaciones,
-        gamma,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        ord=1,
-    ):
-        """
-        Función que entrena una red para regresión ya definida
-        previamente "evaluaciones" veces,
-        cada vez entrenando un número de épocas elegido al crear la red y midiendo
-        el error en train, test y la suma de los pesos cada uno al cuadrado
-        (o su valor absoluto, dependiendo del argumento ord) al terminar ese paso
-        de entrenamiento.
-        Guarda y devuelve la red en el paso de evaluación que da el mínimo error total
-        (ErrorTrain + SumaCuadradaPesos).
-
-        Argumentos:
-          red: red neuronal predefinida
-          evaluaciones (int): las veces que evalua
-          X_{}: los conjuntos de valores de entrada de train, y test
-          y_{}: los conjuntos de valores de salida o clase
-
-        Salidas:
-          best_red: la red entrenada en el mínimo error total
-          error_{}: los errores de: train, test medidos en cada evaluación,
-          la suma de los pesos cada uno al cuadrado (o su valor absoluto,
-          dependiendo del argumento ord).
-        """
-
-        if (ord != 1) and (ord != 2):
-            print("ord Incorrecto, utilice ord=1 o ord=2")
-            return red, [], [], []
-
-        error_train = []
-        error_test = []
-        norm_weights = []
-        min_error = 1.0
-        best_red = red
-
-        for epoch in range(evaluaciones):
-            # red.partial_fit(X_train, y_train, classes=[0,1])
-            ## Podríamos llamar partial_fit para realizar una sóla pasada a la vez,
-            ## pero al ser muy costoso frenar y reanudar el entrenamiento realizamos
-            ## varias épocas a la vez. Recordemos que la red fue definida con el
-            ## parámetro 'sub-epocas', con lo cual cada llamado a 'fit' realiza esa
-            ## cantidad de épocas
-            red.fit(X_train, y_train)
-
-            # error de training
-            y_pred_train = red.predict(X_train)
-            e_train = mean_squared_error(y_train, y_pred_train)
-
-            error_train.append(e_train)
-
-            # Obtenemos los pesos de la red
-            weights = red.coefs_
-
-            # Obtenemos la norma 'ord' de los pesos en la evaluación
-            # weights[0] -> Pesos que van desde la capa de entrada a la capa oculta
-            # weights[1] -> Pesos que van desde la capa oculta a la capa de salida
-            cur_norm_weights = np.linalg.norm(np.concatenate((weights[0].flatten(),
-                                                              weights[1].flatten())
-                                                            ), ord)
-            if ord == 2:
-                cur_norm_weights = cur_norm_weights * cur_norm_weights
-
-            norm_weights.append(cur_norm_weights)
-
-            # error de test
-            error_test.append(1 - red.score(X_test, y_test))
-
-            # Error total
-            total_error = e_train + gamma * cur_norm_weights
-
-            if min_error > total_error:
-                min_error = total_error
-                best_red = deepcopy(red)
-        return best_red, error_train, error_test, norm_weights
-
-    return (entrenar_red_wd,)
+def _():
+    return
 
 
 @app.cell
