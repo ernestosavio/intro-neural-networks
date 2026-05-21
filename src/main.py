@@ -299,7 +299,7 @@ def _(plt):
 def _(np):
     def plot_errors(graph, training_error, testing_error, val_error, super_epocas, sub_epocas):
         rango = np.array(range(super_epocas)) * sub_epocas
-    
+
         graph.plot(rango, training_error, label="train", linestyle=":")
         graph.plot(rango, testing_error, label="test", linestyle="-")
         graph.plot(rango, val_error, label="validation", linestyle="-.")
@@ -707,8 +707,8 @@ def _(joblib, os, res_ej3):
                 "val_perc" : []
                }
 
-        for c in ej3_cases:
-            _res = res_ej3(c)
+        for _c in ej3_cases:
+            _res = res_ej3(_c)
             ej3["super_epocas"].append(_res["super_epocas"])
             ej3["sub_epocas"].append(_res["sub_epocas"])
             ej3["e_train"].append(_res["e_train"])
@@ -726,12 +726,12 @@ def _(ej3, ej3_cases, plot_errors, plt):
     # Graficamos los errores
     _, ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(20, 20), squeeze=False)
 
-    for i in range(len(ej3_cases)):
-        plot_errors(ax[i, 0], ej3["e_train"][i],
-                    ej3["e_test"][i], ej3["e_val"][i],
+    for _i in range(len(ej3_cases)):
+        plot_errors(ax[_i, 0], ej3["e_train"][_i],
+                    ej3["e_test"][_i], ej3["e_val"][_i],
                     ej3["super_epocas"][0], ej3["sub_epocas"][0])
 
-        ax[i, 0].set_title(f"Validacion {ej3_cases[i]}%")
+        ax[_i, 0].set_title(f"Validacion {ej3_cases[_i]}%")
 
 
     plt.show()
@@ -747,29 +747,26 @@ def _(mo):
 
 
 @app.cell
-def _(cargar_csv):
-    def load_data_ej4():
-        # Cargamos los datos de test
-        X_test, y_test = cargar_csv('./data/ssp.test', 12)
-
-        # Cargamos los datos de entrenamiento
-        X_train, y_train = cargar_csv('./data/ssp.data', 12)
-        return X_test, X_train, y_test, y_train
-
-    return (load_data_ej4,)
-
-
-@app.cell
 def _(deepcopy, mean_squared_error, np):
-    def entrenar_red_wd(red, evaluaciones,
-                     X_train, y_train, gamma,
-                     X_test,  y_test, ord=1):
+    def entrenar_red_wd(
+        red,
+        evaluaciones,
+        gamma,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        ord=1,
+    ):
         """
-        Función que entrena una red ya definida previamente "evaluaciones" veces,
+        Función que entrena una red para regresión ya definida
+        previamente "evaluaciones" veces,
         cada vez entrenando un número de épocas elegido al crear la red y midiendo
-        el error en train, validación y test al terminar ese paso de entrenamiento.
-        Guarda y devuelve la red en el paso de evaluación que da el mínimo error de
-        validación.
+        el error en train, test y la suma de los pesos cada uno al cuadrado
+        (o su valor absoluto, dependiendo del argumento ord) al terminar ese paso
+        de entrenamiento.
+        Guarda y devuelve la red en el paso de evaluación que da el mínimo error total
+        (ErrorTrain + SumaCuadradaPesos).
 
         Argumentos:
           red: red neuronal predefinida
@@ -778,80 +775,127 @@ def _(deepcopy, mean_squared_error, np):
           y_{}: los conjuntos de valores de salida o clase
 
         Salidas:
-          best_red: la red entrenada en el mínimo de validación
-          error_{}: los errores de: train, test medidos en cada evaluación, y la 
-          suma de la norma de los pesos ingresada
+          best_red: la red entrenada en el mínimo error total
+          error_{}: los errores de: train, test medidos en cada evaluación,
+          la suma de los pesos cada uno al cuadrado (o su valor absoluto,
+          dependiendo del argumento ord).
         """
+
+        if (ord != 1) and (ord != 2):
+            print("ord Incorrecto, utilice ord=1 o ord=2")
+            return red, [], [], []
+
         error_train = []
         error_test = []
         norm_weights = []
-        min_loss = 1.0
+        min_error = 1.0
         best_red = red
 
         for epoch in range(evaluaciones):
-          # red.partial_fit(X_train, y_train, classes=[0,1])
-          ## Podríamos llamar partial_fit para realizar una sóla pasada a la vez,
-          ## pero al ser muy costoso frenar y reanudar el entrenamiento realizamos
-          ## varias épocas a la vez. Recordemos que la red fue definida con el
-          ## parámetro 'sub-epocas', con lo cual cada llamado a 'fit' realiza esa
-          ## cantidad de épocas
-          red.fit(X_train, y_train)
-          # error de training
-          y_pred_train = red.predict(X_train)
-          e_train = mean_squared_error(y_train, y_pred_train)
-          error_train.append()
+            # red.partial_fit(X_train, y_train, classes=[0,1])
+            ## Podríamos llamar partial_fit para realizar una sóla pasada a la vez,
+            ## pero al ser muy costoso frenar y reanudar el entrenamiento realizamos
+            ## varias épocas a la vez. Recordemos que la red fue definida con el
+            ## parámetro 'sub-epocas', con lo cual cada llamado a 'fit' realiza esa
+            ## cantidad de épocas
+            red.fit(X_train, y_train)
 
-          # Obtenemos los pesos de la red
-          weights = red.coefs_
+            # error de training
+            y_pred_train = red.predict(X_train)
+            e_train = mean_squared_error(y_train, y_pred_train)
 
-          # Obtenemos la norma 'ord' de los pesos en la evaluación
-          # weights[0] -> Pesos que van desde la capa de entrada a la capa oculta
-          # weights[1] -> Pesos que van desde la capa oculta a la capa de salida
-          cur_norm_weights = np.linalg.norm(np.concatenate(weights[0], weights[1]), ord)
-          norm_weights.append(cur_norm_weights)
-        
-          # error de test
-          error_test.append(mean_squared_error(X_test, y_test))
+            error_train.append(e_train)
 
-          # Error total
-          total_error = e_train + gamma*cur_norm_weights
-        
-          if min_loss > total_error:
-            best_val = total_error
-            best_red = deepcopy(red)
+            # Obtenemos los pesos de la red
+            weights = red.coefs_
+
+            # Obtenemos la norma 'ord' de los pesos en la evaluación
+            # weights[0] -> Pesos que van desde la capa de entrada a la capa oculta
+            # weights[1] -> Pesos que van desde la capa oculta a la capa de salida
+            cur_norm_weights = np.linalg.norm(np.concatenate((weights[0].flatten(),
+                                                              weights[1].flatten())
+                                                            ), ord)
+            if ord == 2:
+                cur_norm_weights = cur_norm_weights * cur_norm_weights
+
+            norm_weights.append(cur_norm_weights)
+
+            # error de test
+            error_test.append(1 - red.score(X_test, y_test))
+
+            # Error total
+            total_error = e_train + gamma * cur_norm_weights
+
+            if min_error > total_error:
+                min_error = total_error
+                best_red = deepcopy(red)
         return best_red, error_train, error_test, norm_weights
 
-    return
+    return (entrenar_red_wd,)
 
 
 @app.cell
-def _(MLPRegressor, entrenar_red, load_data_ej4):
-    def res_ej4(gamma):
+def _(MLPRegressor, cargar_csv, entrenar_red_wd, np):
+    def res_ej4(gamma, ord):
+        # ord=1 : Suma de los valores absolutos de los pesos
+        # ord=2 : Suma de los cuadrados de los pesos
+
         iter = 10
+
         eta = 0.05
         alfa = 0.3
         sub_epocas = 20
-        super_epocas = 4000
+        eval = 4000 # "super epocas"
         N2=6
 
-        X_test, X_train, y_test, y_train = load_data_ej4()
+        # Cargamos los datos de test
+        X_test, y_test = cargar_csv('./data/ssp.test', 12)
+
+        errs_train = []
+        norm_weights = []
+        errs_test = []
 
         for i in range(iter):
-           
-            regr = MLPRegressor(hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=gamma, batch_size=1, learning_rate='constant', learning_rate_init=eta, momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True, max_iter=sub_epocas)
+            # Defino MLP para regresión
+            regr = MLPRegressor(hidden_layer_sizes=(N2,), activation='logistic',
+                                solver='sgd', alpha=gamma,
+                                batch_size=1, learning_rate='constant',
+                                learning_rate_init=eta, momentum=alfa,
+                                nesterovs_momentum=False, tol=0.0,
+                                warm_start=True, max_iter=sub_epocas)
+
+            # Cargamos los datos de entrenamiento
+            X_train, y_train = cargar_csv('./data/ssp.data', 12)
 
             # Corremos el entrenamiento
-            regr, e_train, e_val, e_test = entrenar_red(regr, eval, X_train, y_train, X_test, y_test, type = "regr")
+            regr, e_train, e_test, norm_weight = entrenar_red_wd(regr, eval, gamma, 
+                                                                  X_train, y_train,
+                                                                  X_test, y_test,
+                                                                  ord)
 
+            errs_train.append(e_train)
+            errs_test.append(e_test)
+            norm_weights.append(norm_weight)
 
-        
-    
+        mean_e_train = np.mean(errs_train, axis=0)
+        mean_e_test = np.mean(errs_test, axis=0)
+        mean_norm_weight = np.mean(norm_weights, axis=0)
+
+        return { 
+                "super_epocas" : eval,
+                "sub_epocas" : sub_epocas,
+                "e_train"  : mean_e_train,
+                "e_test"     : mean_e_test,
+                "norm_weight"  : mean_norm_weight,
+                "gamma" : gamma
+               }
+
 
     return (res_ej4,)
 
 
 @app.cell
-def _(ej3_cases, joblib, os, res_ej4):
+def _(joblib, os, res_ej4):
     _archivo_cache = "resultados_ej4.pkl"
 
     ej4_cases = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
@@ -859,28 +903,52 @@ def _(ej3_cases, joblib, os, res_ej4):
     if os.path.exists(_archivo_cache):
         ej4 = joblib.load(_archivo_cache)
     else:
-
-        ej4 = {
+        ej4 = { 
                 "super_epocas" : [],
                 "sub_epocas" : [],
-                "e_train": [],
-                "e_val": [],
-                "e_test": [],
-                "train_perc" : [],
-                "val_perc" : []
+                "e_train"  : [],
+                "e_test"     : [],
+                "norm_weight"  : [],
+                "gamma" : []
                }
 
-        for c in ej3_cases:
-            _res = res_ej4(c)
+        for c in ej4_cases:
+            _res = res_ej4(c, 2)
             ej4["super_epocas"].append(_res["super_epocas"])
             ej4["sub_epocas"].append(_res["sub_epocas"])
             ej4["e_train"].append(_res["e_train"])
-            ej4["e_val"].append(_res["e_val"])
             ej4["e_test"].append(_res["e_test"])
-            ej4["train_perc"].append(_res["train_perc"])
-            ej4["val_perc"].append(_res["val_perc"])
+            ej4["norm_weight"].append(_res["norm_weight"])
+            ej4["gamma"].append(_res["gamma"])
 
         joblib.dump(ej4, _archivo_cache)
+    return ej4, ej4_cases
+
+
+@app.cell(disabled=True)
+def _(ej4, ej4_cases, np, plt):
+    # Graficamos los errores
+    _, _ax = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+    for _i in range(len(ej4_cases)):
+        _rango = np.array(range(ej4["super_epocas"][_i])) * ej4["sub_epocas"][_i]
+
+        _ax[_i, 0].plot(_rango, ej4["e_train"][_i], label="train", linestyle=":")
+        _ax[_i, 0].plot(_rango, ej4["e_test"][_i], label="test", linestyle="-")
+        _ax[_i, 0].grid(True)
+        _ax[_i, 0].legend()
+        _ax[_i, 0].set_title(f"Errores {ej4_cases[_i]}%")
+
+    plt.show()
+    return
+
+
+@app.cell(disabled=True)
+def _(ej4_cases, plt):
+    # Graficamos la penalizacion
+
+    for _i in range(len(ej4_cases)):
+        plt.scatter()
     return
 
 
