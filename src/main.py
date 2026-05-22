@@ -21,12 +21,14 @@ def _(mo):
 
 @app.cell
 def _():
-    import joblib
     import os
     import math
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
+    import joblib
+    from joblib import Parallel, delayed
+
 
     import sklearn as skl
     from sklearn.neural_network import MLPRegressor
@@ -39,8 +41,9 @@ def _():
     return (
         MLPClassifier,
         MLPRegressor,
-        ProcessPoolExecutor,
+        Parallel,
         deepcopy,
+        delayed,
         joblib,
         mean_squared_error,
         np,
@@ -444,20 +447,20 @@ def _(deepcopy, mean_squared_error):
         for epoch in range(evaluaciones):
           # Entrenamos la red
           red.fit(X_train, y_train)
-        
+
           # Error de training
           y_pred_train = red.predict(X_train)
           error_train.append(mean_squared_error(y_train, y_pred_train))
-        
+
           # Error de validacion
           y_pred_val = red.predict(X_val)
           cur_val = mean_squared_error(y_val, y_pred_val)
           error_val.append(cur_val)
-        
+
           # Error de test
           y_pred_test = red.predict(X_test)
           error_test.append(mean_squared_error(y_pred_test, y_test))
-        
+
           if best_val > cur_val:
             best_val = cur_val
             best_red = deepcopy(red)
@@ -622,7 +625,7 @@ def _(cargar_csv, skl):
 
 
 @app.cell
-def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
+def _(MLPClassifier, cargar_datos_ej2, entrenar_red):
     def res_ej2(eta, alfa):
         iter = 10
 
@@ -650,44 +653,38 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red, np):
             clasif, e_train, e_val, e_test = entrenar_red(clasif, eval, X_train, y_train, X_val, y_val, X_test, y_test)  
 
             nns.append( {"clasif"    : clasif,
-                         "y_predict" : clasif.predict(X_test),
                          "e_train"   : e_train,
                          "e_val"     : e_val,
-                         "e_test"    : e_test} )
+                         "e_test"    : e_test})
 
-        avg_e_train = np.mean([nn["e_train"] for nn in nns])
-        avg_e_val = np.mean([nn["e_val"] for nn in nns])
-        avg_e_test = np.mean([nn["e_test"] for nn in nns])
-
-        return { "nns" : nns,
-                 "avg_e_train"  : avg_e_train,
-                 "avg_e_val"  : avg_e_val,
-                 "avg_e_test"     : avg_e_test,
+        return { 
+                 "nns" : nns,
                  "learning_rate" : eta,
-                 "momentum" : alfa
+                 "momentum" : alfa,
+                 "super_epocas" : eval,
+                 "sub_epocas" : sub_epocas
                }
 
     return (res_ej2,)
 
 
 @app.cell
-def _(joblib, os, res_ej2):
+def _(Parallel, delayed, joblib, os, res_ej2):
     _archivo_cache = "resultados_ej2.pkl"
 
     if os.path.exists(_archivo_cache):
-        table_ej2 = joblib.load(_archivo_cache)
+        ej2 = joblib.load(_archivo_cache)
 
     else:
-        table_ej2 = {
-             "nns" : [],
-             "avg_e_train": [],
-             "avg_e_val": [],
-             "avg_e_test": [],
-             "learning_rate": [],
-             "momentum": []
-        }
+        ej2 = {
+                 "nns" : [],
+                 "learning_rate": [],
+                 "momentum": [],
+                 "super_epocas" : [],
+                 "sub_epocas" : []
+              }
 
-        _cases = [
+        ej2_cases = [
             (0.1, 0), (0.01, 0), (0.001, 0), (0.1, 0.5), (0.1, 0.9),
             (0.20, 0.9), (0.20, 0.5), (0.30, 0.9), (0.30, 0.5),
             (0.01, 0.5), (0.01, 0.9), (0.001, 0.5), (0.001, 0.9),
@@ -695,17 +692,20 @@ def _(joblib, os, res_ej2):
             (0.275, 0.25), (0.225, 0.25), (0.25, 0.20), (0.25, 0.30)
         ]
 
-        for _eta, _alfa in _cases:
-            _res = res_ej2(_eta, _alfa)
-            table_ej2["nns"].append(_res["nns"])
-            table_ej2["avg_e_train"].append(_res["avg_e_train"])
-            table_ej2["avg_e_val"].append(_res["avg_e_val"])
-            table_ej2["avg_e_test"].append(_res["avg_e_test"])
-            table_ej2["learning_rate"].append(_res["learning_rate"])
-            table_ej2["momentum"].append(_res["momentum"])
+        # 1. Ejecutamos todos los casos en paralelo
+        _res_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej2)(_eta, _alfa) for _eta, _alfa in ej2_cases
+        )
 
-        joblib.dump(table_ej2, _archivo_cache)
-    return (table_ej2,)
+        for _res in _res_paralelos:
+            ej2["nns"].append(_res["nns"])
+            ej2["learning_rate"].append(_res["learning_rate"])
+            ej2["momentum"].append(_res["momentum"])
+            ej2["super_epocas"].append(_res["super_epocas"])
+            ej2["sub_epocas"].append(_res["sub_epocas"])
+
+        joblib.dump(ej2, _archivo_cache)
+    return (ej2,)
 
 
 @app.cell(hide_code=True)
@@ -717,46 +717,65 @@ def _(mo):
 
 
 @app.cell
-def _(pd, table_ej2):
+def _(ej2, np, pd):
     # Creamos y mostramos la tabla
-    show_table_ej2 = pd.DataFrame(table_ej2)
-    show_table_ej2 = show_table_ej2.drop("nns", axis=1)
+    _aux_table_ej2 = {
+                       "learning_rate": [],
+                       "momentum": [],
+                       "avg_e_test": [],
+                       "avg_min_e_val": []
+                     }
 
-    show_table_ej2
-    return
 
 
-app._unparsable_cell(
-    r"""
-    # Tomamos la red neuronal con menor error de test promedio
-    # Primero tomamos el menor error promedio de test
-    min_avg_test_e = min(table_ej2["avg_e_test"])
+    for _i in range(len(ej2["nns"])):
+        _min_errs_val = []
+        _errs_test = []
+        for _j in range(len(ej2["nns"][_i])):
+            _min_e_val = min(ej2["nns"][_i][_j]["e_val"])
+            _min_errs_val.append(_min_e_val)
+            _k = ej2["nns"][_i][_j]["e_val"].index(_min_e_val)
+            _errs_test.append(ej2["nns"][_i][_j]["e_test"][_k])
 
-    # Obtenemos el índice de la entrada del menor error promedio de test
-    i = table_ej2["avg_e_test"].index(min_avg_test_e)
+        _aux_table_ej2["avg_e_test"].append(np.mean(_errs_test))
+        _aux_table_ej2["avg_min_e_val"].append(np.mean(_min_errs_val))
 
-    # Nos quedamos con la red neuronal que tiene ese error de test promedio
-    nn = table_ej2["nns"][i]
+        _aux_table_ej2["momentum"].append(ej2["momentum"][_i])
+        _aux_table_ej2["learning_rate"].append(ej2["learning_rate"][_i])
 
+    table_ej2 = pd.DataFrame(_aux_table_ej2)
+    table_ej2
+    return (table_ej2,)
+
+
+@app.cell
+def _(ej2, np, plot_errors, plt, table_ej2):
+    # Obtenemos el índice de la entrada del menor error promedio de validacion
+    _k = table_ej2["avg_min_e_val"].idxmin()
+
+    e_train = []
+    e_val = []
+    e_test = []
+
+    for _i in range(len(ej2["nns"][_k])):
+        e_train.append(ej2["nns"][_k][_i]["e_train"])
+        e_val.append(ej2["nns"][_k][_i]["e_val"])
+        e_test.append(ej2["nns"][_k][_i]["e_test"])
+
+    _avg_e_train = np.mean(e_train, axis=0)
+    _avg_e_val = np.mean(e_val, axis=0)
+    _avg_e_test = np.mean(e_test, axis=0)
 
     # Ploteamos los errores
-    _, ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(15, 15), squeeze=False)
 
+    plot_errors(_ax[0, 0], _avg_e_train,
+                    _avg_e_test, _avg_e_val,
+                    ej2["super_epocas"][_k], ej2["sub_epocas"][_k])
 
-    plot_errors(ax[0 0], ej3["e_train"][_i],
-                    ej3["e_test"][_i], ej3["e_val"][_i],
-                    ej3["super_epocas"][0], ej3["sub_epocas"][0])
-
-        ax[0, 0].set_title(f"Errores")
-
-
+    _ax[0, 0].set_title("Errores")
     plt.show()
-
-
-
-    """,
-    name="_"
-)
+    return e_test, e_train, e_val
 
 
 @app.cell(hide_code=True)
@@ -820,7 +839,7 @@ def _(cargar_csv, skl):
 
 
 @app.cell
-def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, np, skl):
+def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, skl):
     def res_ej3(val_perc):
         iter = 10
 
@@ -839,9 +858,7 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, np, skl):
 
         train_perc = 1 - val_perc
 
-        errs_train = []
-        errs_val = []
-        errs_test = []
+        nns = []
 
         for i in range(iter):
             # Generamos los datos
@@ -858,29 +875,24 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, np, skl):
              # Corremos el entrenamiento
             regr, e_train, e_val, e_test = entrenar_red_rgr(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)
 
-            errs_train.append(e_train)
-            errs_val.append(e_val)
-            errs_test.append(e_test)
-
-        e_train = np.mean(errs_train, axis=0)
-        e_val = np.mean(errs_val, axis=0)
-        e_test = np.mean(errs_test, axis=0)
+            nns.append( {"regr"    : regr,
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test})
 
         return { 
-                "super_epocas" : eval,
-                "sub_epocas" : sub_epocas,
-                "e_train"  : e_train,
-                "e_val"  : e_val,
-                "e_test"     : e_test,
-                "train_perc" : train_perc,
-                "val_perc" : val_perc
+                 "nns" : nns,
+                 "train_perc" : train_perc,
+                 "val_perc" : val_perc,
+                 "super_epocas" : eval,
+                 "sub_epocas" : sub_epocas
                }
 
     return (res_ej3,)
 
 
 @app.cell
-def _(ProcessPoolExecutor, joblib, os, res_ej3):
+def _(Parallel, delayed, joblib, os, res_ej3):
     _archivo_cache = "resultados_ej3.pkl"
 
     ej3_cases = [0.05, 0.25, 0.5]
@@ -890,28 +902,23 @@ def _(ProcessPoolExecutor, joblib, os, res_ej3):
     else:
 
         ej3 = {
+                "nnss" : [],
                 "super_epocas" : [],
                 "sub_epocas" : [],
-                "e_train": [],
-                "e_val": [],
-                "e_test": [],
                 "train_perc" : [],
                 "val_perc" : []
                }
+        _res_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej3)(_c) for _c in ej3_cases
+        )
 
-        # Paralelizamos cada caso
-        with ProcessPoolExecutor() as executor:
-            results = list(executor.map(res_ej3, ej3_cases))
-
-        for _res in results:
-            ej3["super_epocas"].append(_res["super_epocas"])
-            ej3["sub_epocas"].append(_res["sub_epocas"])
-            ej3["e_train"].append(_res["e_train"])
-            ej3["e_val"].append(_res["e_val"])
-            ej3["e_test"].append(_res["e_test"])
+        for _res in _res_paralelos:
+            ej3["nnss"].append(_res["nns"])
             ej3["train_perc"].append(_res["train_perc"])
             ej3["val_perc"].append(_res["val_perc"])
-    
+            ej3["super_epocas"].append(_res["super_epocas"])
+            ej3["sub_epocas"].append(_res["sub_epocas"])
+
         joblib.dump(ej3, _archivo_cache)
     return ej3, ej3_cases
 
@@ -919,7 +926,7 @@ def _(ProcessPoolExecutor, joblib, os, res_ej3):
 @app.cell
 def _(ej3, ej3_cases, plot_errors, plt):
     # Graficamos los errores
-    _, ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(20, 20), squeeze=False)
+    _, ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
 
     for _i in range(len(ej3_cases)):
         plot_errors(ax[_i, 0], ej3["e_train"][_i],
@@ -947,7 +954,7 @@ def _():
 
 
 @app.cell
-def _(MLPRegressor, cargar_csv, entrenar_red_wd, np):
+def _(MLPRegressor, cargar_csv, entrenar_red_wd):
     def res_ej4(gamma, ord):
         # ord=1 : Suma de los valores absolutos de los pesos
         # ord=2 : Suma de los cuadrados de los pesos
@@ -963,9 +970,7 @@ def _(MLPRegressor, cargar_csv, entrenar_red_wd, np):
         # Cargamos los datos de test
         X_test, y_test = cargar_csv('./data/ssp.test', 12)
 
-        errs_train = []
-        norm_weights = []
-        errs_test = []
+        nns = []
 
         for i in range(iter):
             # Defino MLP para regresión
@@ -984,60 +989,55 @@ def _(MLPRegressor, cargar_csv, entrenar_red_wd, np):
                                                                   X_train, y_train,
                                                                   X_test, y_test,
                                                                   ord)
-
-            errs_train.append(e_train)
-            errs_test.append(e_test)
-            norm_weights.append(norm_weight)
-
-        mean_e_train = np.mean(errs_train, axis=0)
-        mean_e_test = np.mean(errs_test, axis=0)
-        mean_norm_weight = np.mean(norm_weights, axis=0)
+            nns.append( {"regr"    : regr,
+                         "e_train"   : e_train,
+                         "norm_weight"     : norm_weight,
+                         "e_test"    : e_test})
 
         return { 
-                "super_epocas" : eval,
-                "sub_epocas" : sub_epocas,
-                "e_train"  : mean_e_train,
-                "e_test"     : mean_e_test,
-                "norm_weight"  : mean_norm_weight,
-                "gamma" : gamma
+                 "nns" : nns,
+                 "ord"  : ord,
+                 "gamma" : gamma,
+                 "super_epocas" : eval,
+                 "sub_epocas" : sub_epocas
                }
-
 
     return (res_ej4,)
 
 
 @app.cell
-def _(joblib, os, res_ej4):
+def _(Parallel, delayed, joblib, os, res_ej4):
     _archivo_cache = "resultados_ej4.pkl"
-
     ej4_cases = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
 
     if os.path.exists(_archivo_cache):
         ej4 = joblib.load(_archivo_cache)
     else:
         ej4 = { 
-                "super_epocas" : [],
-                "sub_epocas" : [],
-                "e_train"  : [],
-                "e_test"     : [],
-                "norm_weight"  : [],
-                "gamma" : []
-               }
+                "nnss": [],
+                "ord": [],
+                "gamma": [],
+                "super_epocas": [],
+                "sub_epocas": []
+              }
 
-        for c in ej4_cases:
-            _res = res_ej4(c, 2)
+        # 1. Ejecutamos todos los casos en paralelo
+        _resultados_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej4)(_c, 2) for _c in ej4_cases
+        )
+
+        for _res in _resultados_paralelos:
+            ej4["nnss"].append(_res["nns"])
+            ej4["gamma"].append(_res["gamma"])
+            ej4["ord"].append(_res["ord"])
             ej4["super_epocas"].append(_res["super_epocas"])
             ej4["sub_epocas"].append(_res["sub_epocas"])
-            ej4["e_train"].append(_res["e_train"])
-            ej4["e_test"].append(_res["e_test"])
-            ej4["norm_weight"].append(_res["norm_weight"])
-            ej4["gamma"].append(_res["gamma"])
 
         joblib.dump(ej4, _archivo_cache)
     return ej4, ej4_cases
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(ej4, ej4_cases, np, plt):
     # Graficamos los errores
     _, _ax = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(20, 20), squeeze=False)
@@ -1055,7 +1055,7 @@ def _(ej4, ej4_cases, np, plt):
     return
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(ej4_cases, plt):
     # Graficamos la penalizacion
 
