@@ -753,18 +753,18 @@ def _(ej2, np, plot_errors, plt, table_ej2):
     # Obtenemos el índice de la entrada del menor error promedio de validacion
     _k = table_ej2["avg_min_e_val"].idxmin()
 
-    e_train = []
-    e_val = []
-    e_test = []
+    _e_train = []
+    _e_val = []
+    _e_test = []
 
     for _i in range(len(ej2["nns"][_k])):
-        e_train.append(ej2["nns"][_k][_i]["e_train"])
-        e_val.append(ej2["nns"][_k][_i]["e_val"])
-        e_test.append(ej2["nns"][_k][_i]["e_test"])
+        _e_train.append(ej2["nns"][_k][_i]["e_train"])
+        _e_val.append(ej2["nns"][_k][_i]["e_val"])
+        _e_test.append(ej2["nns"][_k][_i]["e_test"])
 
-    _avg_e_train = np.mean(e_train, axis=0)
-    _avg_e_val = np.mean(e_val, axis=0)
-    _avg_e_test = np.mean(e_test, axis=0)
+    _avg_e_train = np.mean(_e_train, axis=0)
+    _avg_e_val = np.mean(_e_val, axis=0)
+    _avg_e_test = np.mean(_e_test, axis=0)
 
     # Ploteamos los errores
     _, _ax = plt.subplots(1, 1, sharey=True, figsize=(15, 15), squeeze=False)
@@ -775,7 +775,7 @@ def _(ej2, np, plot_errors, plt, table_ej2):
 
     _ax[0, 0].set_title("Errores")
     plt.show()
-    return e_test, e_train, e_val
+    return
 
 
 @app.cell(hide_code=True)
@@ -924,18 +924,64 @@ def _(Parallel, delayed, joblib, os, res_ej3):
 
 
 @app.cell
-def _(ej3, ej3_cases, plot_errors, plt):
-    # Graficamos los errores
-    _, ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
+def _(ej3, np, pd):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej3 = {
+                       "train_perc" : [],
+                       "val_perc" : [],
+                       "avg_e_test": [],
+                       "avg_min_e_val": []
+                     }
 
-    for _i in range(len(ej3_cases)):
-        plot_errors(ax[_i, 0], ej3["e_train"][_i],
-                    ej3["e_test"][_i], ej3["e_val"][_i],
-                    ej3["super_epocas"][0], ej3["sub_epocas"][0])
+    for _i in range(len(ej3["nnss"])):
+        _min_errs_val = []
+        _errs_test = []
+        for _j in range(len(ej3["nnss"][_i])):
+            _min_e_val = min(ej3["nnss"][_i][_j]["e_val"])
+            _min_errs_val.append(_min_e_val)
+            _k = ej3["nnss"][_i][_j]["e_val"].index(_min_e_val)
+            _errs_test.append(ej3["nnss"][_i][_j]["e_test"][_k])
 
-        ax[_i, 0].set_title(f"Validacion {ej3_cases[_i]}%")
+        _aux_table_ej3["avg_e_test"].append(np.mean(_errs_test))
+        _aux_table_ej3["avg_min_e_val"].append(np.mean(_min_errs_val))
+
+        _aux_table_ej3["val_perc"].append(ej3["val_perc"][_i])
+        _aux_table_ej3["train_perc"].append(ej3["train_perc"][_i])
+
+    table_ej3 = pd.DataFrame(_aux_table_ej3)
+    table_ej3
+    return
 
 
+@app.cell
+def _(ej3, ej3_cases, np, plot_errors, plt):
+    _e_train = []
+    _e_val = []
+    _e_test = []
+
+    _avg_e_train = []
+    _avg_e_val = []
+    _avg_e_test = []
+
+    for _k in range(len(ej3_cases)):
+        for _i in range(len(ej3["nnss"][_k])):
+            _e_train.append(ej3["nnss"][_k][_i]["e_train"])
+            _e_val.append(ej3["nnss"][_k][_i]["e_val"])
+            _e_test.append(ej3["nnss"][_k][_i]["e_test"])
+
+            _avg_e_train.append(np.mean(_e_train, axis=0))
+            _avg_e_val.append(np.mean(_e_val, axis=0))
+            _avg_e_test.append(np.mean(_e_test, axis=0))
+
+    # Ploteamos los errores
+    _, _ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
+
+    for _j in range(len(ej3_cases)):
+        plot_errors(_ax[_j, 0], _avg_e_train[_j],
+                        _avg_e_test[_j], _avg_e_val[_j],
+                        ej3["super_epocas"][_j], ej3["sub_epocas"][_j])
+
+        _ax[_j, 0].set_title(f"Errores - Validacion: {ej3["val_perc"][_j]} - Train: {ej3["train_perc"][_j]} ")
     plt.show()
     return
 
@@ -945,11 +991,6 @@ def _(mo):
     mo.md(r"""
     # Ejercicio 4. Regularización (2).
     """)
-    return
-
-
-@app.cell
-def _():
     return
 
 
@@ -1038,29 +1079,103 @@ def _(Parallel, delayed, joblib, os, res_ej4):
 
 
 @app.cell
-def _(ej4, ej4_cases, np, plt):
-    # Graficamos los errores
-    _, _ax = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(20, 20), squeeze=False)
+def _(np):
+    def calc_total_errors(e_trains, norm_weights, gamma, ord):
+        e_trains = np.array(e_trains)
+        norm_weights = np.array(norm_weights)
 
-    for _i in range(len(ej4_cases)):
-        _rango = np.array(range(ej4["super_epocas"][_i])) * ej4["sub_epocas"][_i]
+        if (ord == 1):
+            total_errs = e_trains + gamma * norm_weights
+        else: 
+            total_errs = e_trains + gamma * (norm_weights * norm_weights)
 
-        _ax[_i, 0].plot(_rango, ej4["e_train"][_i], label="train", linestyle=":")
-        _ax[_i, 0].plot(_rango, ej4["e_test"][_i], label="test", linestyle="-")
-        _ax[_i, 0].grid(True)
-        _ax[_i, 0].legend()
-        _ax[_i, 0].set_title(f"Errores {ej4_cases[_i]}%")
+        return total_errs.tolist()
 
+    return (calc_total_errors,)
+
+
+@app.cell
+def _(calc_total_errors, ej4, np, pd):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej4 = {
+                       "ord" : [],
+                       "gamma" : [],
+                       "avg_e_test": [],
+                       "avg_e_train": [],
+                       "avg_min_total_err": []
+                     }
+
+    _total_errors = []
+
+    for _i in range(len(ej4["nnss"])):
+        _min_total_errs = []
+        _errs_test = []
+        _errs_train = []
+    
+        for _j in range(len(ej4["nnss"][_i])):
+            _total_errors = calc_total_errors(ej4["nnss"][_i][_j]["e_train"], 
+                                             ej4["nnss"][_i][_j]["norm_weight"],
+                                             ej4["gamma"][_i],
+                                             ej4["ord"][_i])
+            _min_total_err = min(_total_errors)
+            _min_total_errs.append(_min_total_err)
+
+            _k = _total_errors.index(_min_total_err)
+            _errs_train.append(ej4["nnss"][_i][_j]["e_train"][_k])
+            _errs_test.append(ej4["nnss"][_i][_j]["e_test"][_k])
+
+        _aux_table_ej4["avg_e_test"].append(np.mean(_errs_test))
+        _aux_table_ej4["avg_min_total_err"].append(np.mean(_min_total_errs))
+        _aux_table_ej4["avg_e_train"].append(np.mean(_errs_train))
+    
+        _aux_table_ej4["gamma"].append(ej4["gamma"][_i])
+        _aux_table_ej4["ord"].append(ej4["ord"][_i])
+
+    table_ej4 = pd.DataFrame(_aux_table_ej4)
+    table_ej4
+    return
+
+
+@app.cell
+def _(ej4, ej4_cases, np, plot_errors, plt):
+    # Graficamos los errores de la mejor red
+    _e_train = []
+    _norm_weight = []
+    _e_test = []
+
+    _avg_e_train = []
+    _avg_norm_weight = []
+    _avg_e_test = []
+
+    for _k in range(len(ej4_cases)):
+        for _i in range(len(ej4["nnss"][_k])):
+            _e_train.append(ej4["nnss"][_k][_i]["e_train"])
+            _norm_weight.append(ej4["nnss"][_k][_i]["e_val"])
+            _e_test.append(ej4["nnss"][_k][_i]["e_test"])
+
+            _avg_e_train.append(np.mean(_e_train, axis=0))
+            _avg_norm_weight.append(np.mean(_norm_weight, axis=0))
+            _avg_e_test.append(np.mean(_e_test, axis=0))
+
+    # Ploteamos los errores
+    _, err_graph_ej4 = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
+
+    # Graficamos la penalizacion de la mejor red
+    _, pen_graph_ej4 = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
+
+    for _j in range(len(ej4_cases)):
+        plot_errors(_ax[_j, 0], _avg_e_train[_j],
+                        _avg_e_test[_j], _avg_e_val[_j],
+                        ej4["super_epocas"][_j], ej4["sub_epocas"][_j])
+
+        _ax[_j, 0].set_title(f"Errores - Validacion: {ej4["val_perc"][_j]} - Train: {ej4["train_perc"][_j]} ")
     plt.show()
     return
 
 
 @app.cell
-def _(ej4_cases, plt):
-    # Graficamos la penalizacion
-
-    for _i in range(len(ej4_cases)):
-        plt.scatter()
+def _():
+    # Graficamos la penalizacion de la mejor red
     return
 
 
