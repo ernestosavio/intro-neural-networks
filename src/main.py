@@ -374,7 +374,7 @@ def _(deepcopy, mean_squared_error, np):
         error_train = []
         error_test = []
         norm_weights = []
-        min_error = 1.0
+        min_error = np.inf
         best_red = red
 
         for epoch in range(evaluaciones):
@@ -415,7 +415,7 @@ def _(deepcopy, mean_squared_error, np):
 
 
 @app.cell
-def _(deepcopy, mean_squared_error):
+def _(deepcopy, mean_squared_error, np):
     def entrenar_red_rgr(red, evaluaciones,
                          X_train, y_train,
                          X_val,   y_val,
@@ -441,7 +441,7 @@ def _(deepcopy, mean_squared_error):
         error_train = []
         error_val = []
         error_test = []
-        best_val = 1.0
+        best_val = np.inf
         best_red = red
 
         for epoch in range(evaluaciones):
@@ -723,22 +723,16 @@ def _(ej2, np, pd):
                        "learning_rate": [],
                        "momentum": [],
                        "avg_e_test": [],
-                       "avg_min_e_val": []
                      }
 
-
-
     for _i in range(len(ej2["nns"])):
-        _min_errs_val = []
         _errs_test = []
         for _j in range(len(ej2["nns"][_i])):
             _min_e_val = min(ej2["nns"][_i][_j]["e_val"])
-            _min_errs_val.append(_min_e_val)
             _k = ej2["nns"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej2["nns"][_i][_j]["e_test"][_k])
 
         _aux_table_ej2["avg_e_test"].append(np.mean(_errs_test))
-        _aux_table_ej2["avg_min_e_val"].append(np.mean(_min_errs_val))
 
         _aux_table_ej2["momentum"].append(ej2["momentum"][_i])
         _aux_table_ej2["learning_rate"].append(ej2["learning_rate"][_i])
@@ -749,28 +743,28 @@ def _(ej2, np, pd):
 
 
 @app.cell
-def _(ej2, np, plot_errors, plt, table_ej2):
+def _(ej2, plot_errors, plt, table_ej2):
     # Obtenemos el índice de la entrada del menor error promedio de validacion
-    _k = table_ej2["avg_min_e_val"].idxmin()
+    # _k = table_ej2["avg_min_e_val"].idxmin()
+    # Obtenemos el índice de la entrada del menor error promedio de test
+    _k = table_ej2["avg_e_test"].idxmin()
 
-    _e_train = []
-    _e_val = []
-    _e_test = []
+    _find_min_val = []
 
-    for _i in range(len(ej2["nns"][_k])):
-        _e_train.append(ej2["nns"][_k][_i]["e_train"])
-        _e_val.append(ej2["nns"][_k][_i]["e_val"])
-        _e_test.append(ej2["nns"][_k][_i]["e_test"])
+    for _j in range(len(ej2["nns"][_k])):
+        _find_min_val.append(ej2["nns"][_k][_j]["e_val"])
 
-    _avg_e_train = np.mean(_e_train, axis=0)
-    _avg_e_val = np.mean(_e_val, axis=0)
-    _avg_e_test = np.mean(_e_test, axis=0)
+    _i = _find_min_val.index(min(_find_min_val))
+
+    _e_train = ej2["nns"][_k][_i]["e_train"]
+    _e_val = ej2["nns"][_k][_i]["e_val"]
+    _e_test = ej2["nns"][_k][_i]["e_test"]
 
     # Ploteamos los errores
-    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(15, 15), squeeze=False)
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
 
-    plot_errors(_ax[0, 0], _avg_e_train,
-                    _avg_e_test, _avg_e_val,
+    plot_errors(_ax[0, 0], _e_train,
+                    _e_test, _e_val,
                     ej2["super_epocas"][_k], ej2["sub_epocas"][_k])
 
     _ax[0, 0].set_title("Errores")
@@ -920,7 +914,7 @@ def _(Parallel, delayed, joblib, os, res_ej3):
             ej3["sub_epocas"].append(_res["sub_epocas"])
 
         joblib.dump(ej3, _archivo_cache)
-    return ej3, ej3_cases
+    return (ej3,)
 
 
 @app.cell
@@ -930,20 +924,16 @@ def _(ej3, np, pd):
                        "train_perc" : [],
                        "val_perc" : [],
                        "avg_e_test": [],
-                       "avg_min_e_val": []
                      }
 
     for _i in range(len(ej3["nnss"])):
-        _min_errs_val = []
         _errs_test = []
         for _j in range(len(ej3["nnss"][_i])):
             _min_e_val = min(ej3["nnss"][_i][_j]["e_val"])
-            _min_errs_val.append(_min_e_val)
             _k = ej3["nnss"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej3["nnss"][_i][_j]["e_test"][_k])
 
         _aux_table_ej3["avg_e_test"].append(np.mean(_errs_test))
-        _aux_table_ej3["avg_min_e_val"].append(np.mean(_min_errs_val))
 
         _aux_table_ej3["val_perc"].append(ej3["val_perc"][_i])
         _aux_table_ej3["train_perc"].append(ej3["train_perc"][_i])
@@ -954,35 +944,28 @@ def _(ej3, np, pd):
 
 
 @app.cell
-def _(ej3, ej3_cases, np, plot_errors, plt):
-    _e_train = []
-    _e_val = []
-    _e_test = []
+def _(ej3, plot_errors, plt):
+    for _k in range(len(ej3["nnss"])):
+        _find_min_val = []
 
-    _avg_e_train = []
-    _avg_e_val = []
-    _avg_e_test = []
+        for _j in range(len(ej3["nnss"][_k])):
+            _find_min_val.append(min(ej3["nnss"][_k][_j]["e_val"]))
 
-    for _k in range(len(ej3_cases)):
-        for _i in range(len(ej3["nnss"][_k])):
-            _e_train.append(ej3["nnss"][_k][_i]["e_train"])
-            _e_val.append(ej3["nnss"][_k][_i]["e_val"])
-            _e_test.append(ej3["nnss"][_k][_i]["e_test"])
+        _i = _find_min_val.index(min(_find_min_val))
 
-            _avg_e_train.append(np.mean(_e_train, axis=0))
-            _avg_e_val.append(np.mean(_e_val, axis=0))
-            _avg_e_test.append(np.mean(_e_test, axis=0))
+        _e_train = ej3["nnss"][_k][_i]["e_train"]
+        _e_val = ej3["nnss"][_k][_i]["e_val"]
+        _e_test = ej3["nnss"][_k][_i]["e_test"]
 
-    # Ploteamos los errores
-    _, _ax = plt.subplots(len(ej3_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
+        # Ploteamos los errores
+        _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
 
-    for _j in range(len(ej3_cases)):
-        plot_errors(_ax[_j, 0], _avg_e_train[_j],
-                        _avg_e_test[_j], _avg_e_val[_j],
-                        ej3["super_epocas"][_j], ej3["sub_epocas"][_j])
+        plot_errors(_ax[0, 0], _e_train,
+                        _e_test, _e_val,
+                        ej3["super_epocas"][_k], ej3["sub_epocas"][_k])
 
-        _ax[_j, 0].set_title(f"Errores - Validacion: {ej3["val_perc"][_j]} - Train: {ej3["train_perc"][_j]} ")
-    plt.show()
+        _ax[0, 0].set_title(f"Errores  - Validacion: {ej3["val_perc"][_k]} - Train: {ej3["train_perc"][_k]}")
+        plt.show()
     return
 
 
@@ -1111,7 +1094,7 @@ def _(calc_total_errors, ej4, np, pd):
         _min_total_errs = []
         _errs_test = []
         _errs_train = []
-    
+
         for _j in range(len(ej4["nnss"][_i])):
             _total_errors = calc_total_errors(ej4["nnss"][_i][_j]["e_train"], 
                                              ej4["nnss"][_i][_j]["norm_weight"],
@@ -1127,7 +1110,7 @@ def _(calc_total_errors, ej4, np, pd):
         _aux_table_ej4["avg_e_test"].append(np.mean(_errs_test))
         _aux_table_ej4["avg_min_total_err"].append(np.mean(_min_total_errs))
         _aux_table_ej4["avg_e_train"].append(np.mean(_errs_train))
-    
+
         _aux_table_ej4["gamma"].append(ej4["gamma"][_i])
         _aux_table_ej4["ord"].append(ej4["ord"][_i])
 
