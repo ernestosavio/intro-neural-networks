@@ -294,28 +294,6 @@ def _(plt):
     return (plot_classification,)
 
 
-@app.cell
-def _(np):
-    def plot_errors(graph, training_error, testing_error, val_error, super_epocas, sub_epocas):
-        rango = np.array(range(super_epocas)) * sub_epocas
-
-        graph.plot(rango, training_error, label="train", linestyle=":")
-        graph.plot(rango, testing_error, label="test", linestyle="-")
-        graph.plot(rango, val_error, label="validation", linestyle="-.")
-
-        #graph.xlabel('Epocas')
-        #graph.ylabel('Error')
-
-        graph.grid(True)
-        graph.legend()
-        # plt.figure(figsize=(8,5))
-        # plt.ylim(0, 1)
-
-        return graph
-
-    return (plot_errors,)
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -357,27 +335,34 @@ def _(deepcopy, mean_squared_error, np):
         Argumentos:
           red: red neuronal predefinida
           evaluaciones (int): las veces que evalua
-          X_{}: los conjuntos de valores de entrada de train, y test
-          y_{}: los conjuntos de valores de salida o clase
+          gamma: El valor del hiperparámetro gamma con el que fue configurada la red
+          X_{}: los conjuntos de valores de entrada de train y test
+          y_{}: los conjuntos de valores de salida
+          ord: La norma que se va a utilizar
 
         Salidas:
           best_red: la red entrenada en el mínimo error total
-          error_{}: los errores de: train, test medidos en cada evaluación,
-          la suma de los pesos cada uno al cuadrado (o su valor absoluto,
+          error_{}: los errores de: train, test medidos en cada evaluación
+          weights: La suma de los pesos al cuadrado (o su valor absoluto,
           dependiendo del argumento ord).
         """
 
+        # Nos fijamos que no usen una norma extraña (que no sea 1 o 2)
         if (ord != 1) and (ord != 2):
             print("ord Incorrecto, utilice ord=1 o ord=2")
             return red, [], [], []
 
+        # Inicializamos las listas que vamos a retornar
         error_train = []
         error_test = []
         norm_weights = []
+
+        # Inicializamos las variables que nos permiten quedarnos/decidir cual es la mejor red
         min_error = np.inf
         best_red = red
 
         for epoch in range(evaluaciones):
+            # Entrenamos la red
             red.fit(X_train, y_train)
 
             # Error de training
@@ -394,18 +379,20 @@ def _(deepcopy, mean_squared_error, np):
             cur_norm_weights = np.linalg.norm(np.concatenate((weights[0].flatten(),
                                                               weights[1].flatten())
                                                             ), ord)
+
+            # Si tenemos la norma 2, elevamos el vector de pesos al cuadrado
             if ord == 2:
                 cur_norm_weights = cur_norm_weights * cur_norm_weights
-
             norm_weights.append(cur_norm_weights)
 
             # Error de test
             y_predict_test = red.predict(X_test)
             error_test.append(mean_squared_error(y_predict_test, y_test))
 
-            # Error total
+            # Error total (con el cual determinamos que red es mejor)
             total_error = e_train + gamma * cur_norm_weights
 
+            # Nos quedamos con la mejor red
             if min_error > total_error:
                 min_error = total_error
                 best_red = deepcopy(red)
@@ -431,16 +418,20 @@ def _(deepcopy, mean_squared_error, np):
           red: red neuronal predefinida
           evaluaciones (int): las veces que evalua
           X_{}: los conjuntos de valores de entrada de train, validación y test
-          y_{}: los conjuntos de valores de salida o clase
+          y_{}: los conjuntos de valores de salida
 
         Salidas:
           best_red: la red entrenada en el mínimo de validación
           error_{}: los errores de: train, validación y test medidos en cada
             evaluación
         """
+
+        # Inicializamos las listas que vamos a devolver
         error_train = []
         error_val = []
         error_test = []
+
+        # Inicializamos las variables que nos permiten quedarnos/decidir cual es la mejor red
         best_val = np.inf
         best_red = red
 
@@ -461,9 +452,11 @@ def _(deepcopy, mean_squared_error, np):
           y_pred_test = red.predict(X_test)
           error_test.append(mean_squared_error(y_pred_test, y_test))
 
+          # Nos quedamos con la mejor red
           if best_val > cur_val:
             best_val = cur_val
             best_red = deepcopy(red)
+
         return best_red, error_train, error_val, error_test
 
     return (entrenar_red_rgr,)
@@ -472,7 +465,177 @@ def _(deepcopy, mean_squared_error, np):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Funciones de ploteo
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    def plot_errors(graph, training_error, testing_error, val_error, super_epocas, sub_epocas):
+
+        """
+        plot_errors plotea un conjunto de errores de entrenamiento, validación y
+        testeo de una red neuronal, en base a las épocas.
+
+        Argumentos:
+          graph: Gráfico sobre el que se van a plotear los errores
+          training_error: El conjunto de errores de entrenamiento en cada super época
+          testing_error: El conjunto de errores de test en cada super época
+          val_error: El conjunto de errores de validación en cada super época
+          super_epocas: La cantidad de super épocas
+          sub_epocas: La cantidad de épocas
+
+        Salidas:
+          graph: El gráfico con los errores ploteados
+        """
+
+        # Creamos el eje x.
+        rango = np.array(range(super_epocas)) * sub_epocas
+
+        # Ploteamos los errores
+        graph.plot(rango, training_error, label="train", linestyle=":")
+        graph.plot(rango, testing_error, label="test", linestyle="-")
+        graph.plot(rango, val_error, label="validation", linestyle="-.")
+
+        # Colocamos los labels a los ejes
+        graph.set_xlabel('Epocas')
+        graph.set_ylabel('Errores')
+
+        # Activamos que el fondo sea grillado y la leyenda de los líneas
+        graph.grid(True)
+        graph.legend()
+
+        return graph
+
+    return (plot_errors,)
+
+
+@app.function
+def plot_error_wd(graph, training_error, testing_error, gammas):
+    """
+    plot_error_wd plotea un conjunto de errores de entrenamiento y
+    testeo promedio de una red neuronal, en base al valor del hiperparámetro
+    gamma utilizado para configurar la red neuronal.
+
+    Argumentos:
+      graph: Gráfico sobre el que se van a plotear los errores
+      training_error: El conjunto de errores de entrenamiento promedio para cada valor de gamma
+      testing_error: El conjunto de errores de test promedio para cada valor de gamma
+      gammas: El conjunto de valores que toma el hiperparámetro gamma
+
+    Salidas:
+      graph: El gráfico con los errores ploteados
+    """
+
+    # Ploteamos los errores de entrenamiento y testeo
+    graph.plot(gammas, training_error, label="train",
+                  linestyle=":", marker="o", color="blue", linewidth=2)
+
+    graph.plot(gammas, testing_error, label="test", linestyle="-",
+                  marker="o", color="red", linewidth=2)
+
+    # Colocamos los labels a los ejes
+    graph.set_xlabel('Gamma')
+    graph.set_ylabel('Errores')
+
+    # 
+    graph.set_xscale('log')
+
+    # Activamos que el fondo sea grillado y la leyenda de los líneas
+    graph.grid(True)
+    graph.legend()
+
+    # Devolvemos el gráfico modificado
+    return graph
+
+
+@app.cell
+def _(np):
+    def plot_errors_wd(graph, training_error, testing_error, super_epocas, sub_epocas):
+
+        """
+        plot_errors_wd plotea un conjunto de errores de entrenamiento y
+        testeo de una red neuronal, en base a las épocas.
+
+        Argumentos:
+          graph: Gráfico sobre el que se van a plotear los errores
+          training_error: El conjunto de errores de entrenamiento en cada super época
+          testing_error: El conjunto de errores de test en cada super época
+          super_epocas: La cantidad de super épocas
+          sub_epocas: La cantidad de épocas
+
+        Salidas:
+          graph: El gráfico con los errores ploteados
+        """
+
+        # Creamos el eje x.
+        rango = np.array(range(super_epocas)) * sub_epocas
+
+        # Ploteamos los errores
+        graph.plot(rango, training_error, label="train", linestyle=":")
+        graph.plot(rango, testing_error, label="test", linestyle="-")
+
+        # Colocamos los labels a los ejes
+        graph.set_xlabel('Epocas')
+        graph.set_ylabel('Errores')
+
+        # Activamos que el fondo sea grillado y la leyenda de los líneas
+        graph.grid(True)
+        graph.legend()
+
+        return graph
+
+    return (plot_errors_wd,)
+
+
+@app.cell
+def _(np):
+    def plot_penalization(graph, penalizations, super_epocas, sub_epocas):
+
+        """
+        plot_penalization plotea un conjunto de penalizaciones de una red neuronal, en base a las épocas.
+
+        Argumentos:
+          graph: Gráfico sobre el que se van a plotear los errores
+          penalizations: El conjunto de penalizaciones en base a las épocas
+          super_epocas: La cantidad de super épocas
+          sub_epocas: La cantidad de épocas
+
+        Salidas:
+          graph: El gráfico con las penalizaciones ploteados
+        """
+
+        # Creamos el eje x.
+        rango = np.array(range(super_epocas)) * sub_epocas
+
+        # Ploteamos los errores
+        graph.plot(rango, penalizations, linestyle="-")
+
+        # Colocamos los labels a los ejes
+        graph.set_xlabel('Épocas')
+        graph.set_ylabel('Penalización')
+
+        # Activamos que el fondo sea grillado
+        graph.grid(True)
+
+        return graph
+
+    return (plot_penalization,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     # Ejercicio 1. Capacidad de Modelado.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos la red
     """)
     return
 
@@ -539,6 +702,14 @@ def _(MLPClassifier, entrenar_red, np, skl, spiral):
     return (res_ej1,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos los errores
+    """)
+    return
+
+
 @app.cell
 def _(joblib, os, res_ej1):
     _archivo_cache = "resultados_ej1.pkl"
@@ -566,6 +737,13 @@ def _(ej1, plot_classification):
 def _(mo):
     mo.md(r"""
     ## Conclusión
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     En las gráficas podemos ver que mientras incrementamos el numero de
     neuronas en la hidden layer obtenemos una mejor clasificación. Esto se
     debe, a que cuando combinamos sigmoids (las de la capa intermedia en el
@@ -776,6 +954,13 @@ def _(ej2, plot_errors, plt, table_ej2):
 def _(mo):
     mo.md(r"""
     ## Conclusión
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Podemos concluir que los mejores valores de learning rate y momentum para
     esta red son los siguientes:
     Para obtener estos valores tuvimos en cuenta como afecta la modificacion
@@ -815,6 +1000,14 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     # Ejercicio 3. Regularización
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos la red
     """)
     return
 
@@ -917,6 +1110,14 @@ def _(Parallel, delayed, joblib, os, res_ej3):
     return (ej3,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos una tabla y los errores
+    """)
+    return
+
+
 @app.cell
 def _(ej3, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
@@ -972,7 +1173,31 @@ def _(ej3, plot_errors, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Conclusiones
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    .
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     # Ejercicio 4. Regularización (2).
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos las red
     """)
     return
 
@@ -1032,7 +1257,7 @@ def _(MLPRegressor, cargar_csv, entrenar_red_wd):
 @app.cell
 def _(Parallel, delayed, joblib, os, res_ej4):
     _archivo_cache = "resultados_ej4.pkl"
-    ej4_cases = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
+    ej4_cases = [0.00000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
 
     if os.path.exists(_archivo_cache):
         ej4 = joblib.load(_archivo_cache)
@@ -1058,7 +1283,15 @@ def _(Parallel, delayed, joblib, os, res_ej4):
             ej4["sub_epocas"].append(_res["sub_epocas"])
 
         joblib.dump(ej4, _archivo_cache)
-    return (ej4,)
+    return ej4, ej4_cases
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos la tabla y los errores
+    """)
+    return
 
 
 @app.cell
@@ -1083,7 +1316,7 @@ def _(calc_total_errors, ej4, np, pd):
     _aux_table_ej4 = {
                        "ord" : [],
                        "gamma" : [],
-                       "avg_e_test": [],
+                       "avg_e_test": []
                        # "avg_e_train": [],
                        # "avg_min_total_err": []
                      }
@@ -1116,53 +1349,173 @@ def _(calc_total_errors, ej4, np, pd):
 
     table_ej4 = pd.DataFrame(_aux_table_ej4)
     table_ej4
-    return (table_ej4,)
-
-
-@app.cell
-def _(calc_total_errors, ej4, plt, table_ej4):
-    # Graficamos los errores de la mejor red
-    # Obtenemos el índice de la entrada del menor error promedio de test
-    _k = table_ej4["avg_e_test"].idxmin()
-
-    _find_min_val = []
-
-    for _j in range(len(ej4["nnss"][_k])):
-        _find_min_val.append(ej4["nnss"][_k][_j]["e_val"])
-
-    _i = _find_min_val.index(min(_find_min_val))
-
-    _e_train = ej4["nnss"][_k][_i]["e_train"]
-    _total_errors = calc_total_errors(_e_train, 
-                                     ej4["nnss"][_k][_i]["norm_weight"],
-                                     ej4["gamma"][_k],
-                                     ej4["ord"][_k])
-    _e_test = ej4["nnss"][_k][_i]["e_test"]
-
-    # Ploteamos los errores
-    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
-
-    # graficar...
-
-    _ax[0, 0].set_title("Errores")
-    plt.show()
-
-    # Graficamos la penalizacion de la mejor red
-    # _, pen_graph_ej4 = plt.subplots(len(ej4_cases), 1, sharey=True, figsize=(10, 10), squeeze=False)
-
-    # for _j in range(len(ej4_cases)):
-    #     plot_errors(_ax[_j, 0], _avg_e_train[_j],
-    #                     _avg_e_test[_j], _avg_e_val[_j],
-    #                     ej4["super_epocas"][_j], ej4["sub_epocas"][_j])
-
-    #     _ax[_j, 0].set_title(f"Errores - Validacion: {ej4["val_perc"][_j]} - Train: {ej4["train_perc"][_j]} ")
-    # plt.show()
     return
 
 
 @app.cell
-def _():
-    # Graficamos la penalizacion de la mejor red
+def _(calc_total_errors, ej4, ej4_cases, np, plt):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej4_2 = {
+                       "ord" : [],
+                       "gamma" : [],
+                       "avg_e_test": [],
+                       "avg_e_train": []
+                       # "avg_min_total_err": []
+                     }
+
+    _total_errors = []
+
+    for _i in range(len(ej4["nnss"])):
+        # _min_total_errs = []
+        _errs_test = []
+        _errs_train = []
+
+        for _j in range(len(ej4["nnss"][_i])):
+            _total_errors = calc_total_errors(ej4["nnss"][_i][_j]["e_train"], 
+                                             ej4["nnss"][_i][_j]["norm_weight"],
+                                             ej4["gamma"][_i],
+                                             ej4["ord"][_i])
+            _min_total_err = min(_total_errors)
+            # _min_total_errs.append(_min_total_err)
+
+            _k = _total_errors.index(_min_total_err)
+            _errs_train.append(ej4["nnss"][_i][_j]["e_train"][_k])
+            _errs_test.append(ej4["nnss"][_i][_j]["e_test"][_k])
+
+        _aux_table_ej4_2["avg_e_test"].append(np.mean(_errs_test))
+        # _aux_table_ej4["avg_min_total_err"].append(np.mean(_min_total_errs))
+        _aux_table_ej4_2["avg_e_train"].append(np.mean(_errs_train))
+
+        _aux_table_ej4_2["gamma"].append(ej4["gamma"][_i])
+        _aux_table_ej4_2["ord"].append(ej4["ord"][_i])
+
+
+    # Ploteamos los errores
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(15, 15), squeeze=False)
+
+    # graficar...
+
+    plot_error_wd(_ax[0,0], _aux_table_ej4_2["avg_e_train"], _aux_table_ej4_2["avg_e_test"], ej4_cases)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(ej4):
+    # Elegimos el valor de gamma que tiene el menor error que no tiene tanto overfitting
+    _best_gamma = 10**(-6)
+
+    # Elegimos un valor de gamma donde vimos que hay overfitting
+    _overfitting_gamma = 10**(-1)
+
+    # Indices de los gammas
+    _bi = ej4["gamma"].index(_best_gamma)
+    _oi = ej4["gamma"].index(_overfitting_gamma)
+
+    # Lista de gammas
+    gammas = [_bi, _oi]
+    return (gammas,)
+
+
+@app.cell
+def _(calc_total_errors, ej4, gammas, plot_errors_wd, plt):
+    # GRÁFICA DE LOS ERRORES
+    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+    _cont = 0
+
+    for _i in gammas:
+        # Lista de los errores totales mínimos de cada época
+        _min_errors = []
+    
+        # Nos quedamos con la mejor red para el parámetro 'best_gamma'
+        for _j in range(len(ej4["nnss"][_i])):
+            # Obtengo la lista de errores de test
+            _e_train = ej4["nnss"][_i][_j]["e_train"]
+        
+            # Obtenemos la norma de los pesos
+            _norm_weights = ej4["nnss"][_i][_j]["norm_weight"]
+        
+            # Obtenemos el orden de la norma
+            _ord = ej4["ord"][_i]
+
+            # Obtenemos el gamma
+            _gamma = ej4["gamma"][_i]
+    
+            # Calculamos el error total mínimo de entre todas las épocas
+            _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
+    
+        # Obtenemos el índice
+        _k = _min_errors.index(min(_min_errors))
+
+        # Nos quedamos con la red asociada a ese valor, y la ploteamos
+        _nn = ej4["nnss"][_i][_k]
+
+        plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
+
+        _cont += 1
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
+
+    # GRÁFICA DE LA PENALIZACIÓN
+    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+    _cont = 0
+
+    for _i in gammas:
+        # Lista de los errores totales mínimos de cada época
+        min_errors = []
+    
+        # Nos quedamos con la mejor red para el parámetro 'best_gamma'
+        for _j in range(len(ej4["nnss"][_i])):
+            # Obtengo la lista de errores de test
+            _e_train = ej4["nnss"][_i][_j]["e_train"]
+        
+            # Obtenemos la norma de los pesos
+            _norm_weights = ej4["nnss"][_i][_j]["norm_weight"]
+        
+            # Obtenemos el orden de la norma
+            _ord = ej4["ord"][_i]
+
+            # Obtenemos el gamma
+            _gamma = ej4["gamma"][_i]
+    
+            # Calculamos el error total mínimo de entre todas las épocas
+            min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
+    
+        # Obtenemos el índice
+        _k = min_errors.index(min(min_errors))
+
+        # Nos quedamos con la red asociada a ese valor, y la ploteamos
+        _nn = ej4["nnss"][_i][_k]
+
+        plot_penalization(_ax[_cont,0], _nn["norm_weight"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
+
+        _cont += 1
+
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Conclusiones
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    .
+    """)
     return
 
 
