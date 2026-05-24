@@ -312,6 +312,96 @@ def _(mo):
 
 
 @app.cell
+def _(deepcopy, np, zero_one_loss):
+    def entrenar_red_wd_clasf(
+        red,
+        evaluaciones,
+        gamma,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        ord=2,
+    ):
+        """
+        Función que entrena una red para clasificación ya definida
+        previamente "evaluaciones" veces,
+        cada vez entrenando un número de épocas elegido al crear la red y midiendo
+        el error en train, test y la suma de los pesos cada uno al cuadrado
+        (o su valor absoluto, dependiendo del argumento ord) al terminar ese paso
+        de entrenamiento.
+        Guarda y devuelve la red en el paso de evaluación que da el mínimo error total
+        (ErrorTrain + SumaCuadradaPesos).
+
+        Argumentos:
+          red: red neuronal predefinida
+          evaluaciones (int): las veces que evalua
+          gamma: El valor del hiperparámetro gamma con el que fue configurada la red
+          X_{}: los conjuntos de valores de entrada de train y test
+          y_{}: los conjuntos de valores de salida
+          ord: La norma que se va a utilizar
+
+        Salidas:
+          best_red: la red entrenada en el mínimo error total
+          error_{}: los errores de: train, test medidos en cada evaluación
+          weights: La suma de los pesos al cuadrado (o su valor absoluto,
+          dependiendo del argumento ord).
+        """
+
+        # Nos fijamos que no usen una norma extraña (que no sea 1 o 2)
+        if (ord != 1) and (ord != 2):
+            print("ord Incorrecto, utilice ord=1 o ord=2")
+            return red, [], [], []
+
+        # Inicializamos las listas que vamos a retornar
+        error_train = []
+        error_test = []
+        norm_weights = []
+
+        # Inicializamos las variables que nos permiten quedarnos/decidir cual es la mejor red
+        min_error = np.inf
+        best_red = red
+
+        for epoch in range(evaluaciones):
+            # Entrenamos la red
+            red.fit(X_train, y_train)
+
+            # Error de training
+            y_pred_train = red.predict(X_train)
+            e_train = zero_one_loss(y_train, y_pred_train)
+            error_train.append(e_train)
+
+            # Obtenemos los pesos de la red
+            weights = red.coefs_
+
+            # Obtenemos la norma 'ord' de los pesos en la evaluación
+            # weights[0] -> Pesos que van desde la capa de entrada a la capa oculta
+            # weights[1] -> Pesos que van desde la capa oculta a la capa de salida
+            cur_norm_weights = np.linalg.norm(np.concatenate((weights[0].flatten(),
+                                                              weights[1].flatten())
+                                                            ), ord)
+
+            # Si tenemos la norma 2, elevamos el vector de pesos al cuadrado
+            if ord == 2:
+                cur_norm_weights = cur_norm_weights * cur_norm_weights
+            norm_weights.append(cur_norm_weights)
+
+            # Error de test
+            error_test.append(1 - red.score(X_test, y_test))
+
+            # Error total (con el cual determinamos que red es mejor)
+            total_error = e_train + gamma * cur_norm_weights
+
+            # Nos quedamos con la mejor red
+            if min_error > total_error:
+                min_error = total_error
+                best_red = deepcopy(red)
+        return best_red, error_train, error_test, norm_weights
+
+    return (entrenar_red_wd_clasf,)
+
+
+@app.cell
 def _(deepcopy, mean_squared_error, np):
     def entrenar_red_wd(
         red,
@@ -1538,7 +1628,7 @@ def _():
 
 
 @app.cell
-def _(MLPRegressor, diagonales, entrenar_red_wd, np, paralelas):
+def _(MLPClassifier, diagonales, entrenar_red_wd_clasf, np, paralelas):
     def res_ej5(d, N2, eta, alfa, gamma, ord, super_epocas, sub_epocas, gen="paral"):
         # Parámetros:
         # d := Dimensiones de los datos generados
@@ -1576,8 +1666,8 @@ def _(MLPRegressor, diagonales, entrenar_red_wd, np, paralelas):
             train_data = generator(d, C, train_size) 
             X_train, y_train = np.vstack(train_data.input.values), train_data.output
 
-            # Defino MLP para regresión
-            regr = MLPRegressor(hidden_layer_sizes=(N2,), activation='logistic',
+            # Defino MLP para clasificación
+            classf = MLPClassifier(hidden_layer_sizes=(N2,), activation='logistic',
                                 solver='sgd', alpha=gamma,
                                 batch_size=1, learning_rate='constant',
                                 learning_rate_init=eta, momentum=alfa,
@@ -1585,11 +1675,11 @@ def _(MLPRegressor, diagonales, entrenar_red_wd, np, paralelas):
                                 warm_start=True, max_iter=sub_epocas)
 
             # Corremos el entrenamiento
-            regr, e_train, e_test, norm_weight = entrenar_red_wd(regr, super_epocas, gamma, 
+            classf, e_train, e_test, norm_weight = entrenar_red_wd_clasf(classf, super_epocas, gamma, 
                                                                   X_train, y_train,
                                                                   X_test, y_test,
                                                                   ord)
-            nns.append( {"regr"    : regr,
+            nns.append( {"classf"    : classf,
                          "e_train"   : e_train,
                          "norm_weight"     : norm_weight,
                          "e_test"    : e_test})
