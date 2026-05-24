@@ -33,8 +33,8 @@ def _():
     import sklearn as skl
     from sklearn.neural_network import MLPRegressor
     from sklearn.neural_network import MLPClassifier
-    from concurrent.futures import ProcessPoolExecutor
     from sklearn.metrics import mean_squared_error, zero_one_loss
+    from sklearn.datasets import load_iris
 
     from copy import deepcopy
 
@@ -45,6 +45,7 @@ def _():
         deepcopy,
         delayed,
         joblib,
+        load_iris,
         mean_squared_error,
         np,
         os,
@@ -1295,7 +1296,7 @@ def _(mo):
 
 
 @app.cell
-def _(np):
+def calc_total_errors(np):
     def calc_total_errors(e_trains, norm_weights, gamma, ord):
         e_trains = np.array(e_trains)
         norm_weights = np.array(norm_weights)
@@ -1428,24 +1429,24 @@ def _(calc_total_errors, ej4, gammas, plot_errors_wd, plt):
     for _i in gammas:
         # Lista de los errores totales mínimos de cada época
         _min_errors = []
-    
+
         # Nos quedamos con la mejor red para el parámetro 'best_gamma'
         for _j in range(len(ej4["nnss"][_i])):
             # Obtengo la lista de errores de test
             _e_train = ej4["nnss"][_i][_j]["e_train"]
-        
+
             # Obtenemos la norma de los pesos
             _norm_weights = ej4["nnss"][_i][_j]["norm_weight"]
-        
+
             # Obtenemos el orden de la norma
             _ord = ej4["ord"][_i]
 
             # Obtenemos el gamma
             _gamma = ej4["gamma"][_i]
-    
+
             # Calculamos el error total mínimo de entre todas las épocas
             _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
-    
+
         # Obtenemos el índice
         _k = _min_errors.index(min(_min_errors))
 
@@ -1471,24 +1472,24 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
     for _i in gammas:
         # Lista de los errores totales mínimos de cada época
         min_errors = []
-    
+
         # Nos quedamos con la mejor red para el parámetro 'best_gamma'
         for _j in range(len(ej4["nnss"][_i])):
             # Obtengo la lista de errores de test
             _e_train = ej4["nnss"][_i][_j]["e_train"]
-        
+
             # Obtenemos la norma de los pesos
             _norm_weights = ej4["nnss"][_i][_j]["norm_weight"]
-        
+
             # Obtenemos el orden de la norma
             _ord = ej4["ord"][_i]
 
             # Obtenemos el gamma
             _gamma = ej4["gamma"][_i]
-    
+
             # Calculamos el error total mínimo de entre todas las épocas
             min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
-    
+
         # Obtenemos el índice
         _k = min_errors.index(min(min_errors))
 
@@ -1527,11 +1528,415 @@ def _(mo):
     return
 
 
+@app.cell
+def _():
+    # Importamos los generadores de datos (Paralelas y Diagonales)
+    from diagonal import diagonales
+    from paralelas import paralelas
+
+    return diagonales, paralelas
+
+
+@app.cell
+def _(MLPRegressor, diagonales, entrenar_red_wd, np, paralelas):
+    def res_ej5(d, N2, eta, alfa, gamma, ord, super_epocas, sub_epocas, gen="paral"):
+        # Parámetros:
+        # d := Dimensiones de los datos generados
+        # N2 := neuronas en la capa oculta
+        # eta := learning rate
+        # alfa := momentum
+        # gamma := weight decay parameter
+        # ord := normalizacion utilizada en los pesos
+        # numero de epocas que entrena cada vez
+        # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        # gen := Generador de datos gen="diag" para diagonales (default paralelas)
+
+
+        generator = paralelas
+
+        if (gen == "diag"):
+            generator = diagonales
+
+
+        iter = 20
+
+        test_size = 10000
+        train_size = 250
+        C = 0.78 
+
+        nns = []
+
+        # Generamos los datos de test
+        test_data = generator(d, C, test_size) 
+        X_test, y_test = np.vstack(test_data.input.values), test_data.output
+
+        for i in range(iter):
+            # Generamos los datos de entrenamiento y validación
+            train_data = generator(d, C, train_size) 
+            X_train, y_train = np.vstack(train_data.input.values), train_data.output
+
+            # Defino MLP para regresión
+            regr = MLPRegressor(hidden_layer_sizes=(N2,), activation='logistic',
+                                solver='sgd', alpha=gamma,
+                                batch_size=1, learning_rate='constant',
+                                learning_rate_init=eta, momentum=alfa,
+                                nesterovs_momentum=False, tol=0.0,
+                                warm_start=True, max_iter=sub_epocas)
+
+            # Corremos el entrenamiento
+            regr, e_train, e_test, norm_weight = entrenar_red_wd(regr, super_epocas, gamma, 
+                                                                  X_train, y_train,
+                                                                  X_test, y_test,
+                                                                  ord)
+            nns.append( {"regr"    : regr,
+                         "e_train"   : e_train,
+                         "norm_weight"     : norm_weight,
+                         "e_test"    : e_test})
+
+        return { 
+                 "nns" : nns,
+                 "d" : d,
+                 "neurons" : N2, 
+                 "learning_rate" : eta,
+                 "momentum" : alfa,
+                 "gamma" : gamma,
+                 "ord"  : ord,
+                 "super_epocas" : super_epocas,
+                 "sub_epocas" : sub_epocas
+               }
+
+    return (res_ej5,)
+
+
+@app.cell
+def _(Parallel, delayed, joblib, os, res_ej5):
+    _archivo_cache = "resultados_ej5_paral.pkl"
+
+    _dimensions = [2, 4, 8, 16, 32]
+    ej5_paral_cases = []
+
+    for _d in _dimensions:
+        ej5_paral_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
+        ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
+        #ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
+        ej5_paral_cases.append((6, _d, 0.05, 0.3, 10**(-6), 2, 4000, 20))
+        ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
+        #ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 400, 50))
+        #ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 4000, 20))
+
+    if os.path.exists(_archivo_cache):
+        ej5_paral = joblib.load(_archivo_cache)
+    else:
+
+        ej5_paral = {
+                 "nnss" : [],
+                 "d" : [],
+                 "neurons" : [],
+                 "learning_rate" : [],
+                 "momentum" : [],
+                 "gamma" : [],
+                 "ord" : [],
+                 "super_epocas" : [],
+                 "sub_epocas" : []
+               }
+
+        _res_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej5)(_N2, _d, _eta, _alfa, _gamma, _ord, _super_epocas, _sub_epocas) for _N2, _d, _eta, _alfa, _gamma, _ord, _super_epocas, _sub_epocas in ej5_paral_cases
+        )
+
+        for _res in _res_paralelos:
+            ej5_paral["nnss"].append(_res["nns"])
+            ej5_paral["d"].append(_res["d"])
+            ej5_paral["neurons"].append(_res["neurons"])
+            ej5_paral["learning_rate"].append(_res["learning_rate"])
+            ej5_paral["momentum"].append(_res["momentum"])
+            ej5_paral["gamma"].append(_res["gamma"])
+            ej5_paral["ord"].append(_res["ord"])
+            ej5_paral["super_epocas"].append(_res["super_epocas"])
+            ej5_paral["sub_epocas"].append(_res["sub_epocas"])
+
+
+        joblib.dump(ej5_paral, _archivo_cache)
+    return
+
+
+@app.cell
+def _(Parallel, delayed, joblib, os, res_ej5):
+    _archivo_cache = "resultados_ej5_diag.pkl"
+
+    _dimensions = [2, 4, 8, 16, 32]
+    ej5_diag_cases = []
+
+    for _d in _dimensions:
+        ej5_diag_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
+        ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
+        #ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
+        ej5_diag_cases.append((6, _d, 0.05, 0.3, 10**(-6), 2, 4000, 20))
+        ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
+        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 400, 50))
+        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 4000, 20))
+
+    if os.path.exists(_archivo_cache):
+        ej5_diag = joblib.load(_archivo_cache)
+    else:
+
+        ej5_diag = {
+                 "nnss" : [],
+                 "d" : [],
+                 "neurons" : [],
+                 "learning_rate" : [],
+                 "momentum" : [],
+                 "gamma" : [],
+                 "ord" : [],
+                 "super_epocas" : [],
+                 "sub_epocas" : []
+               }
+
+        _res_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej5)(_N2, _d, _eta, _alfa, _gamma, _ord, _super_epocas, _sub_epocas, gen="diag") for _N2, _d, _eta, _alfa, _gamma, _ord, _super_epocas, _sub_epocas in ej5_diag_cases
+        )
+
+        for _res in _res_paralelos:
+            ej5_diag["nnss"].append(_res["nns"])
+            ej5_diag["d"].append(_res["d"])
+            ej5_diag["neurons"].append(_res["neurons"])
+            ej5_diag["learning_rate"].append(_res["learning_rate"])
+            ej5_diag["momentum"].append(_res["momentum"])
+            ej5_diag["gamma"].append(_res["gamma"])
+            ej5_diag["ord"].append(_res["ord"])
+            ej5_diag["super_epocas"].append(_res["super_epocas"])
+            ej5_diag["sub_epocas"].append(_res["sub_epocas"])
+
+
+        joblib.dump(ej5_diag, _archivo_cache)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos la tabla y los errores
+    """)
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # (OPCIONAL) Ejercicio 6. Multiclase.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## A)
+    """)
+    return
+
+
+@app.cell
+def _(MLPClassifier, entrenar_red, load_iris, skl):
+    def res_ej6(N2, eta, alfa, super_epocas, sub_epocas, val_perc):
+        iter = 10
+
+        # Parámetros:
+        # eta := learning rate
+        # alfa := momentum
+        # numero de epocas que entrena cada vez
+        # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        # neuronas en la capa oculta
+
+        # Cargamos los datos de test
+        X_iris = load_iris().data
+        y_iris = load_iris().target
+
+        train_perc = 1 - val_perc
+
+        nns = []
+
+        for i in range(iter):
+            # Hacemos el split de testing (1/3 datos de test)
+            X, X_test, Y, y_test = skl.model_selection.train_test_split(X_iris, y_iris, test_size=0.33)
+            # Generamos los datos de entrenamiento y validación
+            X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, Y, test_size=val_perc)
+
+            # Defino MLP para clasificación
+            clasif = MLPClassifier(
+                hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
+                batch_size=1, learning_rate='constant', learning_rate_init=eta,
+                momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
+                max_iter=sub_epocas
+            )
+
+             # Corremos el entrenamiento
+            clasif, e_train, e_val, e_test = entrenar_red(clasif, super_epocas, X_train, y_train, X_val, y_val, X_test, y_test)
+
+            nns.append( {"nn"    : clasif,
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test})
+
+        return { 
+                 "nns" : nns,
+                 "neurons" : N2, 
+                 "learning_rate" : eta,
+                 "momentum" : alfa,
+                 "train_perc" : train_perc,
+                 "val_perc" : val_perc,
+                 "super_epocas" : super_epocas,
+                 "sub_epocas" : sub_epocas
+               }
+
+    return (res_ej6,)
+
+
+@app.cell
+def _(Parallel, delayed, joblib, os, res_ej6):
+    _archivo_cache = "resultados_ej6.pkl"
+
+    ej6_cases = [(30, 0.01, 0.9, 400, 50, 0.5), (30, 0.01, 0.9, 400, 50, 0.25),
+                 (30, 0.01, 0.9, 2000, 50, 0.25), (6, 0.05, 0.3, 4000, 20, 0.25)]
+
+    if os.path.exists(_archivo_cache):
+        ej6 = joblib.load(_archivo_cache)
+    else:
+
+        ej6 = {
+                 "nnss" : [],
+                 "neurons" : [],
+                 "learning_rate" : [],
+                 "momentum" : [],
+                 "train_perc" : [],
+                 "val_perc" : [],
+                 "super_epocas" : [],
+                 "sub_epocas" : []
+               }
+
+        _res_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej6)(_N2, _eta, _alfa, _super_epocas, _sub_epocas, _val_perc) for _N2, _eta, _alfa, _super_epocas, _sub_epocas, _val_perc in ej6_cases
+        )
+
+        for _res in _res_paralelos:
+            ej6["nnss"].append(_res["nns"])
+            ej6["neurons"].append(_res["neurons"])
+            ej6["learning_rate"].append(_res["learning_rate"])
+            ej6["momentum"].append(_res["momentum"])
+            ej6["train_perc"].append(_res["train_perc"])
+            ej6["val_perc"].append(_res["val_perc"])
+            ej6["super_epocas"].append(_res["super_epocas"])
+            ej6["sub_epocas"].append(_res["sub_epocas"])
+
+        joblib.dump(ej6, _archivo_cache)
+    return (ej6,)
+
+
+@app.cell
+def _(ej6, np, pd):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej6 = {
+                       "neurons" : [],
+                       "learning_rate" : [],
+                       "momentum" : [],
+                       "train_perc" : [],
+                       "val_perc" : [],
+                       "avg_e_test": [],
+                     }
+
+    for _i in range(len(ej6["nnss"])):
+        _errs_test = []
+        for _j in range(len(ej6["nnss"][_i])):
+            _min_e_val = min(ej6["nnss"][_i][_j]["e_val"])
+            _k = ej6["nnss"][_i][_j]["e_val"].index(_min_e_val)
+            _errs_test.append(ej6["nnss"][_i][_j]["e_test"][_k])
+
+        _aux_table_ej6["avg_e_test"].append(np.mean(_errs_test))
+
+        _aux_table_ej6["neurons"].append(ej6["neurons"][_i])
+        _aux_table_ej6["learning_rate"].append(ej6["learning_rate"][_i])
+        _aux_table_ej6["momentum"].append(ej6["momentum"][_i])
+        _aux_table_ej6["val_perc"].append(ej6["val_perc"][_i])
+        _aux_table_ej6["train_perc"].append(ej6["train_perc"][_i])
+
+    table_ej6 = pd.DataFrame(_aux_table_ej6)
+    table_ej6
+    return
+
+
+@app.cell
+def _(ej6, plot_errors, plt):
+    ax_ej6 = []
+
+    for _k in range(len(ej6["nnss"])):
+        _find_min_val = []
+
+        for _j in range(len(ej6["nnss"][_k])):
+            _find_min_val.append(min(ej6["nnss"][_k][_j]["e_val"]))
+
+        _i = _find_min_val.index(min(_find_min_val))
+
+        _e_train = ej6["nnss"][_k][_i]["e_train"]
+        _e_val = ej6["nnss"][_k][_i]["e_val"]
+        _e_test = ej6["nnss"][_k][_i]["e_test"]
+
+        # Ploteamos los errores
+        _fig, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+        plot_errors(_ax[0, 0], _e_train,
+                        _e_test, _e_val,
+                        ej6["super_epocas"][_k], ej6["sub_epocas"][_k])
+
+        _ax[0, 0].set_title(f"Errores - Neurons: {ej6["neurons"][_k]} - Learning Rate: {ej6["learning_rate"][_k]} - Momentum: {ej6["momentum"][_k]} - Validacion: {ej6["val_perc"][_k]}")
+
+        ax_ej6.append(_fig)
+        plt.close(_fig)
+    return (ax_ej6,)
+
+
+@app.cell
+def _(ax_ej6):
+    ax_ej6[0]
+    return
+
+
+@app.cell
+def _(ax_ej6):
+    ax_ej6[1]
+    return
+
+
+@app.cell
+def _(ax_ej6):
+    ax_ej6[2]
+    return
+
+
+@app.cell
+def _(ax_ej6):
+    ax_ej6[3]
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## B)
+    """)
+    return
+
+
+@app.cell
+def _():
+    # neurons: 3 esta bien (a lo sumo 30, solo ganamos 1%-2
+    # learning rate: 0.3
+    # momentum: 0.3
+    # Full gradient descent was used in all  these experiments
+    # Network weights in the output units were initial-  ized to small random values. However, input unit weights were initialized to zero,  because this yields much more intelligible visualizations of the learned weights  
+    # sub epocas: 50
+    # super epocas: 1 ? 
     return
 
 
