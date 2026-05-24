@@ -715,6 +715,25 @@ def _(np):
     return (plot_penalization,)
 
 
+@app.function
+def plot_error_dimensions(graph, dimensions, e_train_graph, e_test_graph, total_errors_graph):
+
+    graph.plot(dimensions, e_train_graph, marker='o', linestyle='-', color='tab:blue', label='Error Train')
+    graph.plot(dimensions, e_test_graph, marker='o', linestyle='-', color='tab:orange', label='Error Test')
+    graph.plot(dimensions, total_errors_graph, marker='o', linestyle='-', color='tab:red', label='Error Total (Penalizado)')
+
+    graph.xlabel('Dimensiones (d)')
+    graph.ylabel('Error')
+    graph.title('Evolución de los errores según la dimensionalidad')
+
+    graph.xticks(dimensions) 
+
+    graph.grid(True, linestyle='--', alpha=0.6)
+    graph.legend()
+
+    return graph
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -1054,8 +1073,11 @@ def _(mo):
     mo.md(r"""
     Podemos concluir que los mejores valores de learning rate y momentum para
     esta red son los siguientes:
+    - Learning rate = 0.25
+    - Momentum = 0.5
+
     Para obtener estos valores tuvimos en cuenta como afecta la modificacion
-    de dichos parametros. Recordemos primero que implica cada parametro.
+    de dichos parametros al error de test promedio. Recordemos primero que implica cada parametro.
 
     **Learning rate**
     El learning rate es un valor que indica que tanta importancia le damos, al momento de ajustar
@@ -1074,15 +1096,31 @@ def _(mo):
     (ya que este término no se anula por más que la derivada sea 0).
 
     Ahora bien, valores muy altos pueden generar que nos escapemos incluso del mínimo global.
-    Por otro lado, un valor muy pequeño puede hacer que no sobrepasemos los minimos locales. Un
-    valor adecuado nos ayudara a sobrepasar minimos locales y no escaparnos del minimo global.
+    Por otro lado, un valor muy pequeño puede hacer que no sobrepasemos los mínimos locales. Un
+    valor adecuado nos ayudara a sobrepasar mínimos locales y no escaparnos del mínimo global.
 
-    Volviendo a nuestro ejercicio, en los casos donde usamos momentum y
-    learning rate muy alto tengan errores mucho mas altos que en otros casos.
-    Lo mismo pasa en los casos con learning rate y momentum muy bajos.
+    Vamos a definir una buena solución como un conjunto de hiperparámetros
+    que minimicen el error.
+
+    Volviendo a nuestro ejercicio, vemos que hay una especie de relación
+    entre el learning rate y el momentum, donde difícilmente se puede sacar conclusiones
+    cuando variamos los hiperparámetros en rangos "aceptables". Es decir,
+    estableciendo valores de learning rate y momentum extremos (de forma conjunta)
+    nos dan malos resultandos. En cambio, poniendo valores "razonables"
+    podemos encontrar buenas soluciones, donde se encuentra la solución optima.
+    Viendo los casos de ejemplos podemos definir valores razonables como:
+    - Learning rate: Entre 0.1 y 0.3
+    - Momentum: Cercano a 0.5
+
+    En nuestra opinion, fijando uno de estos hiperparámetros existe un rango
+    de valores aceptables (del otro hiperparámetro) donde conseguimos buenas
+    soluciones. En dicho rango la función de error posee muchos mínimos locales,
+    lo que hace que conseguir la combinación adecuada sea una labor muy compleja.
+    El valor fijado para este hiperparámetro afecta donde se ubica el rango del
+    hiperparámetro restante.
 
     En los casos intermedios fuimos probando diferentes valores hasta que
-    obtuvimos un error cercano al 10%. LR = 0.275, M = 0.25.
+    obtuvimos un error cercano al 10%. LR = 0.25, M = 0.5.
     """)
     return
 
@@ -1272,7 +1310,20 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    .
+    - La epoca donde la red empieza a generalizar bien (baja significativamente
+    el error de test) depende directamente de la proporcion elegida para los
+    conjuntos de train y validacion. Mientras mas chicha sea la proporcion de
+    entrenamiento con respecto a la de validacion, mas tarda en aprender la red
+    (mas epocas necesitamos).   [sin datos de train no aprendemos, mientras mas mejor]
+
+    - Cuando se tiene un conjunto de validacion muy chico puede ocurrir que
+    dicho conjunto tenga datos pocos significativos. Esto puede conllevar a
+    tener un error de validacion poco fiel a la realidad (error de test),
+    haciendo que se elija una red que generaliza de mala manera
+
+    - Si tenemos un conjunto de validacion con una proporcion muy grande
+    no nos quedan suficientes datos para aprender. Por ende, tardamos
+    mucho mas en aprender y generalizamos peor.
     """)
     return
 
@@ -1565,7 +1616,7 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
 
         # Nos quedamos con la mejor red para el parámetro 'best_gamma'
         for _j in range(len(ej4["nnss"][_i])):
-            # Obtengo la lista de errores de test
+            # Obtengo la lista de errores de train
             _e_train = ej4["nnss"][_i][_j]["e_train"]
 
             # Obtenemos la norma de los pesos
@@ -1591,7 +1642,7 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
         _cont += 1
 
     plt.show()
-    return
+    return (min_errors,)
 
 
 @app.cell(hide_code=True)
@@ -1700,13 +1751,19 @@ def _(MLPClassifier, diagonales, entrenar_red_wd_clasf, np, paralelas):
 
 
 @app.cell
-def _(Parallel, delayed, joblib, os, res_ej5):
+def _():
+    # Definimos las dimensiones
+    dimensions_ej5 = [2, 4, 8, 16, 32]
+    return (dimensions_ej5,)
+
+
+@app.cell
+def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
     _archivo_cache = "resultados_ej5_paral.pkl"
 
-    _dimensions = [2, 4, 8, 16, 32]
     ej5_paral_cases = []
 
-    for _d in _dimensions:
+    for _d in dimensions_ej5:
         ej5_paral_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
         ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
         #ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
@@ -1752,18 +1809,17 @@ def _(Parallel, delayed, joblib, os, res_ej5):
 
 
 @app.cell
-def _(Parallel, delayed, joblib, os, res_ej5):
+def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
     _archivo_cache = "resultados_ej5_diag.pkl"
 
-    _dimensions = [2, 4, 8, 16, 32]
     ej5_diag_cases = []
 
-    for _d in _dimensions:
-        ej5_diag_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
-        ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
+    for _d in dimensions_ej5:
+        #ej5_diag_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
+        #ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
         #ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
         ej5_diag_cases.append((6, _d, 0.05, 0.3, 10**(-6), 2, 4000, 20))
-        ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
+        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
         #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 400, 50))
         #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 4000, 20))
 
@@ -1808,6 +1864,148 @@ def _(mo):
     mo.md(r"""
     ## Ploteamos la tabla y los errores
     """)
+    return
+
+
+@app.cell
+def _(calc_total_errors, ej5, np, pd):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej5 = {
+                       "d" : [],
+                       "learning_rate" : [],
+                       "momentum" : [],
+                       "gamma" : [],
+                       "ord" : [],
+                       "super_epocas" : [],
+                       "sub_epocas" : [],
+                       "avg_e_test": [],
+                     }
+
+    for _i in range(len(ej5["nnss"])):
+        _errs_test = []
+        for _j in range(len(ej5["nnss"][_i])):
+            _total_errors = calc_total_errors(ej5["nnss"][_i][_j]["e_train"], 
+                                             ej5["nnss"][_i][_j]["norm_weight"],
+                                             ej5["gamma"][_i],
+                                             ej5["ord"][_i])
+            _min_total_err = min(_total_errors)
+            _k = _total_errors.index(_min_total_err)
+            _errs_test.append(ej5["nnss"][_i][_j]["e_test"][_k])
+
+        _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
+
+        _aux_table_ej5["d"].append(ej5["d"][_i])
+        _aux_table_ej5["learning_rate"].append(ej5["learning_rate"][_i])
+        _aux_table_ej5["momentum"].append(ej5["momentum"][_i])
+        _aux_table_ej5["gamma"].append(ej5["gamma"][_i])
+        _aux_table_ej5["ord"].append(ej5["ord"][_i])
+        _aux_table_ej5["super_epocas"].append(ej5["super_epocas"][_i])
+        _aux_table_ej5["sub_epocas"].append(ej5["sub_epocas"][_i])
+
+    table_ej5 = pd.DataFrame(_aux_table_ej5)
+    table_ej5
+    return
+
+
+@app.cell
+def _(calc_total_errors, dimensions_ej5, ej4, plot_errors_wd, plt):
+    # GRÁFICA DE LOS ERRORES
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+
+    _cont = 0
+
+    for _d in dimensions_ej5:
+        # Lista de los errores totales mínimos de cada época
+        _min_errors = []
+
+        # Nos quedamos con la mejor red para el parámetro 'best_gamma'
+        for _j in range(len(ej4["nnss"][_d])):
+            # Obtengo la lista de errores de test
+            _e_train = ej4["nnss"][_d][_j]["e_train"]
+
+            # Obtenemos la norma de los pesos
+            _norm_weights = ej4["nnss"][_d][_j]["norm_weight"]
+
+            # Obtenemos el orden de la norma
+            _ord = ej4["ord"][_d]
+
+            # Obtenemos el gamma
+            _gamma = ej4["gamma"][_d]
+
+            # Calculamos el error total mínimo de entre todas las épocas
+            _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
+
+        # Obtenemos el índice
+        _k = _min_errors.index(min(_min_errors))
+
+        # Nos quedamos con la red asociada a ese valor, y la ploteamos
+        _nn = ej4["nnss"][_d][_k]
+
+        plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej4["super_epocas"][_d], ej4["sub_epocas"][_d])
+
+        _cont += 1
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(
+    calc_total_errors,
+    dimensions_ej5,
+    e_train_graph,
+    ej5,
+    min_errors,
+    plt,
+    total_errors_graph,
+):
+    _e_train_graph = []
+    _e_test_graph = []
+    _total_errors_graph = []
+
+    for _i in range(len(dimensions_ej5)):
+        _min_errors = []
+        _total_errors_list = []
+
+        for _j in range(len(ej5["nnss"][_i])):
+            # Obtengo la lista de errores de train
+            _e_train = ej5["nnss"][_i][_j]["e_train"]
+
+            # Obtenemos la norma de los pesos
+            _norm_weights = ej5["nnss"][_i][_j]["norm_weight"]
+
+            # Obtenemos el orden de la norma
+            _ord = ej5["ord"][_i]
+
+            # Obtenemos el gamma
+            _gamma = ej5["gamma"][_i]
+
+            _total_errors = calc_total_errors(_e_train, _norm_weights, _gamma, _ord)
+            _total_errors_list.append(_total_errors)
+
+            # Calculamos el error total mínimo de entre todas las épocas
+            min_errors.append(min(_total_errors))
+
+        _min_total_err = min(min_errors)
+        # Obtenemos el índice con la red con menor total error
+        _k = min_errors.index(_min_total_err)
+
+        # Nos quedamos con la red asociada a ese valor
+        _nn = ej5["nnss"][_i][_k]
+
+        # Super epoca en la que se logra el _min_total_err dentro
+        # de la mejor red
+        _e = _total_errors_list[_k].index(_min_total_err)
+
+        _e_test_graph.append(_nn["e_test"][_e])
+        _e_train_graph.append(_nn["e_train"][_e])
+        _total_errors_graph.append(_min_total_err)
+
+
+    _graph = plt.figure(figsize=(12, 8))
+    plot_error_dimensions(_graph, dimensions_ej5, _e_test_graph, e_train_graph, total_errors_graph)
+
+    plt.show()
     return
 
 
