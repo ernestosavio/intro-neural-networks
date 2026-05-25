@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.23.6"
-app = marimo.App(width="full")
+app = marimo.App(width="medium")
 
 
 @app.cell
@@ -599,7 +599,7 @@ def plot_error_wd(graph, training_error, testing_error, gammas):
                   marker="o", color="red", linewidth=2)
 
     # Colocamos los labels a los ejes
-    graph.set_xlabel('Gamma')
+    graph.set_xlabel('Valor gamma (en escala logarítmica)')
     graph.set_ylabel('Errores')
 
     # 
@@ -684,7 +684,7 @@ def _(np):
 
         return graph
 
-    return (plot_penalization,)
+    return
 
 
 @app.function
@@ -1231,6 +1231,7 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, skl):
         # Hacemos el split de testing (~ 2000 datos de train)
         _, X_test, _, y_test = skl.model_selection.train_test_split(X, y, test_size=0.416)
 
+        # Calculamos el porcentaje de datos usado para entrenamiento
         train_perc = 1 - val_perc
 
         nns = []
@@ -1247,9 +1248,10 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, skl):
                 max_iter=sub_epocas
             )
 
-             # Corremos el entrenamiento
+            # Corremos el entrenamiento
             regr, e_train, e_val, e_test = entrenar_red_rgr(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)
 
+            # Guardamos el resultado
             nns.append( {"regr"    : regr,
                          "e_train"   : e_train,
                          "e_val"     : e_val,
@@ -1435,11 +1437,23 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Recordemos como afecta gamma a nuestra red.
+    Recordemos como afecta $\gamma$ a nuestra red.
 
-    Gamma es un penalizador. Un escalar que multiplica a la suma de cada peso al cuadrado (o la suma de los valores absolutos de los pesos) e impacta directamente en la actualización de los pesos en cada iteración.
+    $\gamma$ es un penalizador. Un escalar que multiplica a la suma de cada peso al cuadrado (o la suma de los valores absolutos de los pesos) e impacta directamente en el error total de la red:
 
-    Un Gamma muy pequeño penalizará muy poco a dicha sumatoria, permitiendo valores de pesos elevados, lo que derivará en que la red se vuelva compleja, permitiendo un sobreajuste a los datos de entrenamiento (pequenias variaciones en el vector de entrada tendra grandes implicancias en el resultado). Por otro lado, un Gamma muy elevado penalizara mucho a la sumatoria, esto provoca que la red disminuya drasticamente los pesos. Como consecuencia, una red con pesos muy bajos hara que variaciones en el vector de entrada tengan poca influencia en el resultado, por lo que la red generalizara de mala manera.
+    $$\Large{E_{\text{total}} = E_0 + \gamma\sum_{i=1}^{n} w_i^2}$$
+
+    Donde $E_0$ representa el error de la red. Esta fórmula fue tomada del libro `Deep Learning` de `Ian Goodfellow`.
+
+    En sí este valor representa nuestra preferencia por los pesos grandes. Concretamente (recordemos que en el entrenamiento nos quedamos con la red que tiene menor error total):
+
+    - Si el valor de $\gamma$ es igual a 0, el segundo término es igual a cero. Esto nos dice que no tenemos ningun tipo de preferencia por los pesos grandes, por lo tanto no estamos penalizando (no preferimos los pesos grandes ni los chicos).
+    - Si el valor de $\gamma$ es muy pequeño, el segundo término es muy pequeño. Esto se traduce en una prefencia por los pesos grandes, ya que los pesos no tienen una gran influencia en el error.
+    - Si el valor de $\gamma$ es muy grande, entonces el segundo término es muy grande. En consecuencia, poseemos una prefencia por los pesos pequeño, ya que el segundo término tiene una gran influencia en el error total.
+
+    Tomar un valor muy grande para $\gamma$ no es algo bueno, ya que esto produce underfitting. Tener un valor muy grande de $\gamma$ hace que los pesos sean muy chicos. En consecuencia, cuando las entradas pasan por las conexiones ven que su valor reduce a un número muy cercano a cero. Lo cual no ayuda a la clasificación/regresión.
+
+    Por otro lado, un valor muy pequeño para $\gamma$ deriva en que los pesos de la red sean muy elevados. En consecuencia la red se vuelve más compleja. Esto genera overfitting sobre los datos de entrenamientos (pequeñas variaciones en el vector de entrada tendrá grandes implicancias en el resultado).
     """)
     return
 
@@ -1507,7 +1521,7 @@ def _(MLPRegressor, cargar_csv, entrenar_red_wd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Entrenamos algunas redes variando el valor de gamma. Agregamos unos casos extra que nos parecieron interesantes.
+    Entrenamos algunas redes variando el valor de $\gamma$. Agregamos unos casos extra que nos parecieron interesantes.
     """)
     return
 
@@ -1613,8 +1627,22 @@ def _(calc_total_errors, ej4, np, pd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Podemos notar que a partir de gamma=10^-6, se obtuvo un error menor o igual 0,008; Mientras que para los valores mayores a 10^(-3) vemos un error mayor o igual al 2%.
+    Podemos notar que a partir de $\gamma=10^{-6}$, se obtuvo un error menor o igual $0.008$, Mientras que para los valores de $\gamma$ mayores a $10^{-3}$ vemos un error mayor o igual al $0.02$.
+    """)
+    return
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Gráfica $\gamma$-error
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Grafiquemos los errores de entrenamiento y error para los distintos valores de gamma:
     """)
     return
@@ -1662,6 +1690,7 @@ def _(calc_total_errors, ej4, ej4_cases, np, plt):
     # graficar...
 
     plot_error_wd(_ax[0,0], _aux_table_ej4_2["avg_e_train"], _aux_table_ej4_2["avg_e_test"], ej4_cases)
+    _ax[0,0].set_title(f"Relación gamma-errores (MSE)")
 
     plt.show()
     return
@@ -1670,7 +1699,9 @@ def _(calc_total_errors, ej4, ej4_cases, np, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    A partir de estos datos, determinamos que el valor de gamma óptimo es 10^(-5). Por otra parte, elegimos el valor de gamma 10^(-12) como valor de gamma donde vemos overfitting.
+    Observamos que el comportamiento del valor de $\gamma$ con respecto al error de nuestro problema se coindice con lo analizado al comienzo del ejercicio. Un valor muy pequeño de $\gamma$ produce overfitting ($10^{-11}$ y $10^{-6}$). Por otro lado, los valores más grandes de $\gamma$ producen underfitting ($10^{-1}$ y $10^{0}$).
+
+    A partir de este análisis, determinamos que el valor óptimo de $\gamma$ es $10^{-5}$. Por otra parte, elegimos el valor $\gamma=10^{-11}$ como el valor de $\gamma$ donde vemos overfitting.
     """)
     return
 
@@ -1685,11 +1716,8 @@ def _(mo):
 
 @app.cell
 def _(ej4):
-    # Elegimos el valor de gamma que tiene el menor error que no tiene tanto overfitting
-    _best_gamma = 10**(-6)
-
-    # Elegimos un valor de gamma donde vimos que hay overfitting
-    _overfitting_gamma = 10**(-1)
+    _best_gamma = 10**(-5)
+    _overfitting_gamma = 10**(-11)
 
     # Indices de los gammas
     _bi = ej4["gamma"].index(_best_gamma)
@@ -1703,7 +1731,7 @@ def _(ej4):
 @app.cell
 def _(calc_total_errors, ej4, gammas, plot_errors_wd, plt):
     # GRÁFICA DE LOS ERRORES
-    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 20), squeeze=False)
+    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 7.5), squeeze=False)
 
     _cont = 0
 
@@ -1735,18 +1763,29 @@ def _(calc_total_errors, ej4, gammas, plot_errors_wd, plt):
         _nn = ej4["nnss"][_i][_k]
 
         plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
-
+ 
+        _ax[_cont, 0].set_title(f"Errores MSE  - Gamma: {ej4["gamma"][_i]} ")
+    
         _cont += 1
-
+    
+    plt.tight_layout()
     plt.show()
     return
 
 
-@app.cell
-def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Tal y como habíamos previsto anteriormente, en la gráfica para $\gamma=10^{-5}$ se ve una muy buena generalización. Por otro lado, apra $\gamma=10^{-11}$ vemos que hay overfitting (el error de testeo pareciera comenzar a crecer de a poco, mientras que el error de entrenamiento comienza a bajar de a poco).
+    """)
+    return
+
+
+app._unparsable_cell(
+    r"""
 
     # GRÁFICA DE LA PENALIZACIÓN
-    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 20), squeeze=False)
+    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 10, squeeze=False)
 
     _cont = 0
 
@@ -1779,42 +1818,20 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
 
         plot_penalization(_ax[_cont,0], _nn["norm_weight"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
 
+        _ax[_cont, 0].set_title(f"Penalización - Gamma: {ej4["gamma"][_i]} ")
         _cont += 1
-
+    
+    plt.tight_layout()
     plt.show()
-    return (min_errors,)
+    """,
+    name="_"
+)
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ### Conclusiones de los errores
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    Con esto en cuenta, y apoyandonos en el grafico realizado, vemos como
-       valores pequenios del gamma producen overfitting disminuyendo el error de
-       train mientras que el de test se mantiene constante, llevando a la red
-       a un lugar cada vez mas inestable. A su ves, tambien vemos como valores
-       de gammas elevados como 10^-1 perjudican a la red dificultando su
-       generalizacion, aumentando asi el error de test. En este caso, tambien
-       vemos como aumenta el error de train, esto se debe a que nuestra
-       red, al penalizar tanto los pesos, pierda totalmente su capacidad
-       de prediccion (underfitting, este fenomeno nos deja ver en la grafica
-       de errores, como el error de train supera al de test, nuestra red
-       es inutil para predecir cualquier cosa, test o train).
-
-       Viendo el grafico de penalizacion, vemos como en la red con el gamma
-       optimo, a medida que entrenamos la red, esta penalizacion crece. Este
-       comportamiento es totalmente lo buscado, a medida que entrenamos
-       exhaustivamente nuestra red, necesitamos que no se acostumbre a los
-       datos de entrenamiento y para combatir esto se aumenta la penalizacion
-       de los pesos (manteniendolos en rangos aceptables). # arreglar grafico
-       poner el de overfitting
+    Nuevamente, estas gráficas parecen coincidir con nuestro análisis hecho al inicio del ejercicio. Observamos que el valor más grande de $\gamma$ tiene una mayor penzalización que el valor más pequeño de $\gamma$.
     """)
     return
 
@@ -1823,6 +1840,14 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     # Ejercicio 5. Dimensionalidad.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos las redes
     """)
     return
 
@@ -1915,6 +1940,14 @@ def _():
     return (dimensions_ej5,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Entrenamos la red con los hiper-parámetros que nos parecieron convenientes (que nos fueron dando buenos resultado en otras ejecuciones). Lo que si tuvimos que hacer es bajar la cantidad de evaluaciones (super épocas) ya que tardaba mucho en entrenar la red.
+    """)
+    return
+
+
 @app.cell
 def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
     _archivo_cache = "resultados_ej5_paral.pkl"
@@ -2003,7 +2036,7 @@ def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
 
 
         joblib.dump(ej5_diag, _archivo_cache)
-    return
+    return (ej5_diag,)
 
 
 @app.cell(hide_code=True)
@@ -2015,7 +2048,7 @@ def _(mo):
 
 
 @app.cell
-def _(calc_total_errors, ej5, np, pd):
+def _(calc_total_errors, ej5_diag, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej5 = {
                        "d" : [],
@@ -2028,26 +2061,26 @@ def _(calc_total_errors, ej5, np, pd):
                        "avg_e_test": [],
                      }
 
-    for _i in range(len(ej5["nnss"])):
+    for _i in range(len(ej5_diag["nnss"])):
         _errs_test = []
-        for _j in range(len(ej5["nnss"][_i])):
-            _total_errors = calc_total_errors(ej5["nnss"][_i][_j]["e_train"], 
-                                             ej5["nnss"][_i][_j]["norm_weight"],
-                                             ej5["gamma"][_i],
-                                             ej5["ord"][_i])
+        for _j in range(len(ej5_diag["nnss"][_i])):
+            _total_errors = calc_total_errors(ej5_diag["nnss"][_i][_j]["e_train"], 
+                                             ej5_diag["nnss"][_i][_j]["norm_weight"],
+                                             ej5_diag["gamma"][_i],
+                                             ej5_diag["ord"][_i])
             _min_total_err = min(_total_errors)
             _k = _total_errors.index(_min_total_err)
-            _errs_test.append(ej5["nnss"][_i][_j]["e_test"][_k])
+            _errs_test.append(ej5_diag["nnss"][_i][_j]["e_test"][_k])
 
         _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
 
-        _aux_table_ej5["d"].append(ej5["d"][_i])
-        _aux_table_ej5["learning_rate"].append(ej5["learning_rate"][_i])
-        _aux_table_ej5["momentum"].append(ej5["momentum"][_i])
-        _aux_table_ej5["gamma"].append(ej5["gamma"][_i])
-        _aux_table_ej5["ord"].append(ej5["ord"][_i])
-        _aux_table_ej5["super_epocas"].append(ej5["super_epocas"][_i])
-        _aux_table_ej5["sub_epocas"].append(ej5["sub_epocas"][_i])
+        _aux_table_ej5["d"].append(ej5_diag["d"][_i])
+        _aux_table_ej5["learning_rate"].append(ej5_diag["learning_rate"][_i])
+        _aux_table_ej5["momentum"].append(ej5_diag["momentum"][_i])
+        _aux_table_ej5["gamma"].append(ej5_diag["gamma"][_i])
+        _aux_table_ej5["ord"].append(ej5_diag["ord"][_i])
+        _aux_table_ej5["super_epocas"].append(ej5_diag["super_epocas"][_i])
+        _aux_table_ej5["sub_epocas"].append(ej5_diag["sub_epocas"][_i])
 
     table_ej5 = pd.DataFrame(_aux_table_ej5)
     table_ej5
