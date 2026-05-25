@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.23.6"
-app = marimo.App()
+app = marimo.App(width="full")
 
 
 @app.cell
@@ -264,35 +264,6 @@ def _(X_train, plt, y_train):
     plt.scatter(_xs1, _ys1, color='blue')
     plt.show()
     return
-
-
-@app.cell
-def _(plt):
-    def plot_classification(results, size_ds, feature_names, target_names):
-        X_test, y_test = results["X_test"], results["y_test"]
-
-        _, ax = plt.subplots(size_ds, 2, sharey=True, figsize=(20, 20), squeeze=False)
-
-        for i in range(size_ds):
-            # Ploteamos los datos reales a la izquierda
-            scatter_true = ax[i, 0].scatter(X_test[:,0], X_test[:,1], c=y_test, s=10, cmap="bwr")
-            ax[i, 0].set(xlabel=feature_names[0], ylabel=feature_names[1])
-            _ = ax[i, 0].legend(
-                scatter_true.legend_elements()[0], target_names, loc="lower right", title="Classes (True)"
-            )
-
-            # Ploteamos los datos predecidos a la derecha
-            scatter_pred = ax[i, 1].scatter(X_test[:,0], X_test[:,1],
-                                            c=results["nns"][i]["y_predict"], s=10, cmap="bwr")
-            ax[i, 1].set(xlabel=feature_names[0], ylabel=feature_names[1])
-            _ = ax[i, 1].legend(
-                scatter_pred.legend_elements()[0], target_names, loc="lower right", title="Classes (Pred)"
-            )
-
-
-        plt.show()
-
-    return (plot_classification,)
 
 
 @app.cell(hide_code=True)
@@ -592,6 +563,7 @@ def _(np):
         # Colocamos los labels a los ejes
         graph.set_xlabel('Epocas')
         graph.set_ylabel('Errores')
+    
 
         # Activamos que el fondo sea grillado y la leyenda de los líneas
         graph.grid(True)
@@ -732,6 +704,35 @@ def plot_error_dimensions(graph, dimensions, e_train_graph, e_test_graph, total_
     graph.legend()
 
     return graph
+
+
+@app.cell
+def _(plt):
+    def plot_classification(results, size_ds, feature_names, target_names):
+        X_test, y_test = results["X_test"], results["y_test"]
+
+        _, ax = plt.subplots(size_ds, 2, sharey=True, figsize=(20, 20), squeeze=False)
+
+        for i in range(size_ds):
+            # Ploteamos los datos reales a la izquierda
+            scatter_true = ax[i, 0].scatter(X_test[:,0], X_test[:,1], c=y_test, s=10, cmap="bwr")
+            ax[i, 0].set(xlabel=feature_names[0], ylabel=feature_names[1])
+            _ = ax[i, 0].legend(
+                scatter_true.legend_elements()[0], target_names, loc="lower right", title="Classes (True)"
+            )
+
+            # Ploteamos los datos predecidos a la derecha
+            scatter_pred = ax[i, 1].scatter(X_test[:,0], X_test[:,1],
+                                            c=results["nns"][i]["y_predict"], s=10, cmap="bwr")
+            ax[i, 1].set(xlabel=feature_names[0], ylabel=feature_names[1])
+            _ = ax[i, 1].legend(
+                scatter_pred.legend_elements()[0], target_names, loc="lower right", title="Classes (Pred)"
+            )
+
+
+        plt.show()
+
+    return (plot_classification,)
 
 
 @app.cell(hide_code=True)
@@ -891,6 +892,32 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    Para este ejercicio es importante entender que:
+
+    **Learning rate**
+    El learning rate es un valor que indica que tanta importancia le damos, al momento de ajustar
+    los pesos, a los errores de aproximación (que tanto aprendemos de los errores).
+
+    Un learning rate bajo hace que los pesos se ajusten de a poco. Esto puede provocar que el valor de los pesos se quede estancado en un mínimo local (ya que la derivada
+    parcial es igual a 0). En contraposición, un learning rate alto ajusta los pesos de manera
+    mas agresiva, esto puede provocar que los valores de los pesos se escapen o sobrepasen
+    mínimos locales, pero puede que además sobrepasen al mínimo global.
+
+    **Momentum**
+    El momentum agrega un término en la corrección de los pesos de cada
+    iteración del algoritmo (suma momentum * variacion_peso). Representa la inercia
+    de la variación de los pesos. Esto logra que aún cayendo en un mínimo local (punto
+    donde la la derivada parcial del error se hace 0) nos podamos salir del mismo
+    (ya que este término no se anula por más que la derivada sea 0).
+
+    Ahora bien, valores muy altos pueden generar que nos escapemos incluso del mínimo global. Por otro lado, un valor muy pequeño puede hacer que no sobrepasemos los mínimos locales. Un valor adecuado nos ayudara a sobrepasar mínimos locales y no escaparnos del mínimo global.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Entrenamos la red
     """)
     return
@@ -956,6 +983,14 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red):
     return (res_ej2,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Primero entrenamos la red con distintas combinaciones de hiper-parámetros. Entre ellos no solo encontramos las combinaciones recomendadas, también agregamos un amplio conjunto de combinaciones que nos parecieron útiles para obtener una conclusión.
+    """)
+    return
+
+
 @app.cell
 def _(Parallel, delayed, joblib, os, res_ej2):
     _archivo_cache = "resultados_ej2.pkl"
@@ -999,7 +1034,15 @@ def _(Parallel, delayed, joblib, os, res_ej2):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Ploteamos los errores
+    ## Ploteamos la tabla
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Luego de haber entrenado las redes, plasmamos en una tabla los resultados de los distintos entrenamientos. En la tabla se pueden observar el error promedio que tiene una red con cierta combinación de hiper-parámetros.
     """)
     return
 
@@ -1020,20 +1063,85 @@ def _(ej2, np, pd):
             _k = ej2["nns"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej2["nns"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej2["avg_e_test"].append(np.mean(_errs_test))
+        _aux_table_ej2["avg_e_test"].append(round(np.mean(_errs_test),4))
 
-        _aux_table_ej2["momentum"].append(ej2["momentum"][_i])
-        _aux_table_ej2["learning_rate"].append(ej2["learning_rate"][_i])
+        _aux_table_ej2["momentum"].append(round(ej2["momentum"][_i],2))
+        _aux_table_ej2["learning_rate"].append(round(ej2["learning_rate"][_i],2))
 
     table_ej2 = pd.DataFrame(_aux_table_ej2)
     table_ej2
     return (table_ej2,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Con cual combinación nos quedamos:
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    En dicha tabla podemos observar que la mejor combinación de hiper-parámetros es la que tiene:
+
+        - learning rate = 0.25
+        - momentum = 0.5
+
+    ya que posee el menor error promedio de testeo (aproximadamente 6%).
+
+    Ahora bien, como nos piden graficar los errores en función de las épocas para estos valores de eta y alfa, resulta que debemos elegir alguna de las redes que entrenamos con dicha combinación de hiper-parámetros (una de las 10 redes entrenadas). Por lo tanto, elegimos la red que posee el menor error de validación.
+
+    Antes de plotear el error, nos parece importante resaltar porqué tomamos estas decisiones.
+
+    Para determinar con exactitud el rendimiento de un combinación de hiper-parámetros sobre un problema (qué tan bien generaliza mi red con esa combinación de hiper-parámetros), deberíamos calcular el error real que tiene la red al ser evaluada en todos los casos posibles del problema. Si hicieramos esto para cada combinación de hiper-parámetros, podríamos determinar con certeza cuál de todas estas combinaciones es la que permite generalizar mejor (aquella que posea el menor error).
+
+    El problema es que, en el mundo real rara vez esto es posible. Ya que no tenemos este conjunto de "todos los casos posibles" (o incluso puede que lo conozcamos, pero que no sea posible evaluar la red en todos estos casos. Por ejemplo, debido a que este conjunto es infinito).
+
+    Lo mejor que podemos hacer en estos casos es aproximar el rendimiento de un combinación de hiper-parámetros mediante un conjunto de validación (es un subconjunto de datos que no fueron utilizados para el entrenamiento, los cuales tienen una distribución similar a la del mundo real). Luego determinaríamos que combinación de hiper-parámetros es mejor a partir del error de la red sobre el conjunto de validación.
+
+    Dentro de este trabajo práctico tenemos un conjunto de testeo, el cual representa este conjunto de "todos los casos posibles de mi problema" (o almenos eso comprendimos nosotros). En consecuencia, el error de testeo representarían los errores reales que tendrían las redes. Debido a que nuestro objetivo es encontrar la combinación de hiper-parámetros que minimice el error de testeo, es que elegimos aquella combinación que tenga menor error promedio de testeo.
+
+    Es importante que este conjunto de test no sea utilizado para determinar que iteración (para cierta combinación de hiper-parámetros) es la mejor ya que si no empezaríamos a realizar overfitting buscando el entrenamiento que nos da el mejor error de testeo.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Conclusión de la tabla
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    En nuestra opinión, vemos que existe una especie de relación entre el learning rate y el momentum. Observamos que si fijamos el valor de uno de estos hiper-parámetros, podemos definir un rango de valores (para el otro hiper-parámetro) donde el error promedio de test es "aceptable". Dentro de dicho rango, podemos encontrar varias combinaciones para las cuales el error alcance un mínimo local, por lo que encontrar la combinación exacta que minimiza el error puede convertirse en una tarea muy compleja. A su vez, podemos identificar que la ubicación de este rango de combinaciones "aceptables" depende del valor para el cual se haya fijado el primer hiper-parámetro. Por ejemplo:
+
+    - Cuando fijamos el momentum en 0.9, vimos que este rango pareciera comenzar cuando el learning rate es mayor o igual a 0.01 y pareciera terminar cuando el learning_rate es mayor igual a 0.2
+    - Cuando fijamos el momentum en 0, vimos que este rango pareciera comenzar con eta mayor igual a 0.1 y no vimos donde terminaba (solo podemos deducir que seguimos obteniendo valores de error aceptables para eta = 0.3).
+
+    Basandonos
+
+    - Learning rate: Entre 0.1 y 0.3
+    - Momentum: Cercano a 0.5
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos los errores
+    """)
+    return
+
+
 @app.cell
 def _(ej2, plot_errors, plt, table_ej2):
-    # Obtenemos el índice de la entrada del menor error promedio de validacion
-    # _k = table_ej2["avg_min_e_val"].idxmin()
     # Obtenemos el índice de la entrada del menor error promedio de test
     _k = table_ej2["avg_e_test"].idxmin()
 
@@ -1049,13 +1157,13 @@ def _(ej2, plot_errors, plt, table_ej2):
     _e_test = ej2["nns"][_k][_i]["e_test"]
 
     # Ploteamos los errores
-    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 7.5), squeeze=False)
 
     plot_errors(_ax[0, 0], _e_train,
                     _e_test, _e_val,
                     ej2["super_epocas"][_k], ej2["sub_epocas"][_k])
 
-    _ax[0, 0].set_title("Errores")
+    _ax[0, 0].set_title(f"Errores - eta = {0.25} y alfa = {0.5}" )
     plt.show()
     return
 
@@ -1063,7 +1171,7 @@ def _(ej2, plot_errors, plt, table_ej2):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusión
+    ### Conclusión de la gráfica
     """)
     return
 
@@ -1071,56 +1179,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Podemos concluir que los mejores valores de learning rate y momentum para
-    esta red son los siguientes:
-    - Learning rate = 0.25
-    - Momentum = 0.5
-
-    Para obtener estos valores tuvimos en cuenta como afecta la modificacion
-    de dichos parametros al error de test promedio. Recordemos primero que implica cada parametro.
-
-    **Learning rate**
-    El learning rate es un valor que indica que tanta importancia le damos, al momento de ajustar
-    los pesos, a los errores de aproximación (que tanto aprendemos de los errores).
-
-    Un learning rate bajo hace que los pesos se ajusten de a poco. Esto puede provocar que el valor de los pesos se quede estancado en un mínimo local (ya que la derivada
-    parcial es igual a 0). En contraposición, un learning rate alto ajusta los pesos de manera
-    mas agresiva, esto puede provocar que los valores de los pesos se escapen o sobrepasen
-    mínimos locales, pero puede que además sobrepasen al mínimo global.
-
-    **Momentum**
-    El momentum agrega un término en la corrección de los pesos de cada
-    iteración del algoritmo (suma momentum * variacion_peso). Representa la inercia
-    de la variación de los pesos. Esto logra que aún cayendo en un mínimo local (punto
-    donde la la derivada parcial del error se hace 0) nos podamos salir del mismo
-    (ya que este término no se anula por más que la derivada sea 0).
-
-    Ahora bien, valores muy altos pueden generar que nos escapemos incluso del mínimo global.
-    Por otro lado, un valor muy pequeño puede hacer que no sobrepasemos los mínimos locales. Un
-    valor adecuado nos ayudara a sobrepasar mínimos locales y no escaparnos del mínimo global.
-
-    Vamos a definir una buena solución como un conjunto de hiperparámetros
-    que minimicen el error.
-
-    Volviendo a nuestro ejercicio, vemos que hay una especie de relación
-    entre el learning rate y el momentum, donde difícilmente se puede sacar conclusiones
-    cuando variamos los hiperparámetros en rangos "aceptables". Es decir,
-    estableciendo valores de learning rate y momentum extremos (de forma conjunta)
-    nos dan malos resultandos. En cambio, poniendo valores "razonables"
-    podemos encontrar buenas soluciones, donde se encuentra la solución optima.
-    Viendo los casos de ejemplos podemos definir valores razonables como:
-    - Learning rate: Entre 0.1 y 0.3
-    - Momentum: Cercano a 0.5
-
-    En nuestra opinion, fijando uno de estos hiperparámetros existe un rango
-    de valores aceptables (del otro hiperparámetro) donde conseguimos buenas
-    soluciones. En dicho rango la función de error posee muchos mínimos locales,
-    lo que hace que conseguir la combinación adecuada sea una labor muy compleja.
-    El valor fijado para este hiperparámetro afecta donde se ubica el rango del
-    hiperparámetro restante.
-
-    En los casos intermedios fuimos probando diferentes valores hasta que
-    obtuvimos un error cercano al 10%. LR = 0.25, M = 0.5.
+    En la gráfica podemos observar que hay una pequeña diferencia entre el error de entrenamiento y el error de testeo, aunque por lo general se mantiene baja. Por lo que los valores del learning rate y momentum para este problema parecen ser adecuados.
     """)
     return
 
@@ -1207,6 +1266,14 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, skl):
     return (res_ej3,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Entrenamos la red con distintas distribuciones del conjunto de datos de testeo. Agregamos dos valores extra además de los recomendados.
+    """)
+    return
+
+
 @app.cell
 def _(Parallel, delayed, joblib, os, res_ej3):
     _archivo_cache = "resultados_ej3.pkl"
@@ -1242,7 +1309,15 @@ def _(Parallel, delayed, joblib, os, res_ej3):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Ploteamos una tabla y los errores
+    ## Ploteamos la tabla
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Luego de entrenar las redes, mostramos en una tabla los resultados de los entrenamientos. La primer columna muestra el porcentaje de los datos importados de Ikeda que fueron destinados para entrenamiento, la segunda columna muestra el porcentaje de los datos importados de Ikeda que fueron destinados para validación, y la última columna muestra el error promedio de los entrenamientos
     """)
     return
 
@@ -1251,9 +1326,9 @@ def _(mo):
 def _(ej3, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej3 = {
-                       "train_perc" : [],
-                       "val_perc" : [],
-                       "avg_e_test": [],
+                       "Porcentaje entrenamiento" : [],
+                       "Porcentaje validación" : [],
+                       "Error promedio de test": [],
                      }
 
     for _i in range(len(ej3["nnss"])):
@@ -1263,13 +1338,29 @@ def _(ej3, np, pd):
             _k = ej3["nnss"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej3["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej3["avg_e_test"].append(np.mean(_errs_test))
+        _aux_table_ej3["Error promedio de test"].append(round(np.mean(_errs_test),4))
 
-        _aux_table_ej3["val_perc"].append(ej3["val_perc"][_i])
-        _aux_table_ej3["train_perc"].append(ej3["train_perc"][_i])
+        _aux_table_ej3["Porcentaje validación"].append(round(ej3["val_perc"][_i],2))
+        _aux_table_ej3["Porcentaje entrenamiento"].append(round(ej3["train_perc"][_i],2))
 
     table_ej3 = pd.DataFrame(_aux_table_ej3)
     table_ej3
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    En base a los resultados que aparecen en la tabla, observamos que las tres distribuciones propuestas por el ejercicio arrojaron un error promedio bastante similar. Por otro lado, las proporciones propuestas por nosotros arrojan un error más grande.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos los errores
+    """)
     return
 
 
@@ -1288,13 +1379,13 @@ def _(ej3, plot_errors, plt):
         _e_test = ej3["nnss"][_k][_i]["e_test"]
 
         # Ploteamos los errores
-        _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+        _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 7.5), squeeze=False)
 
         plot_errors(_ax[0, 0], _e_train,
                         _e_test, _e_val,
                         ej3["super_epocas"][_k], ej3["sub_epocas"][_k])
 
-        _ax[0, 0].set_title(f"Errores  - Validacion: {ej3["val_perc"][_k]} - Train: {ej3["train_perc"][_k]}")
+        _ax[0, 0].set_title(f"Errores  - Validacion: {round(ej3["val_perc"][_k],2)} - Train: {round(ej3["train_perc"][_k],2)}")
         plt.show()
     return
 
@@ -1302,7 +1393,7 @@ def _(ej3, plot_errors, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusiones
+    ### Conclusiones sobre las gráficas
     """)
     return
 
@@ -1310,20 +1401,25 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    - La epoca donde la red empieza a generalizar bien (baja significativamente
-    el error de test) depende directamente de la proporcion elegida para los
-    conjuntos de train y validacion. Mientras mas chicha sea la proporcion de
-    entrenamiento con respecto a la de validacion, mas tarda en aprender la red
-    (mas epocas necesitamos).   [sin datos de train no aprendemos, mientras mas mejor]
+    En general, podemos ver una relación entre la proporciones utilizadas y la época donde se comienzan a estabilizar los errores. En las primeras 4 gráficas podemos ver que mientras más aumenta el porcentaje de datos usados para validación, más tarda en estabilizarse el error. En particular:
 
-    - Cuando se tiene un conjunto de validacion muy chico puede ocurrir que
-    dicho conjunto tenga datos pocos significativos. Esto puede conllevar a
-    tener un error de validacion poco fiel a la realidad (error de test),
-    haciendo que se elija una red que generaliza de mala manera
+    - El error de la primer gráfica pareciera converger a partir de la época 2500.
 
-    - Si tenemos un conjunto de validacion con una proporcion muy grande
-    no nos quedan suficientes datos para aprender. Por ende, tardamos
-    mucho mas en aprender y generalizamos peor.
+    - El error de la segunda gráfica pareciera empezar a estabilizarse a partir de la época 5000.
+
+    - El error de la tercer gráfica pareciera converger a partir de la época 10000.
+
+    - El error de la cuarte gráfica pareciera que recién comienza a estabilizarse en la época 20000.
+
+    En la última gráfica podemos ver overfitting ya que el error de entrenamiento baja y el de test sube. Esto se debe principalmente a que, sin datos no podemos aprender.
+
+    Por otra parte, también podemos ver una relación entre las proporciones utilizadas y la distancia entre el error de entrenamiento y el error de testeo. Explícitamente vemos que:
+
+    - Cuando se tiene un conjunto de validacion muy chico (primer distribución) puede ocurrir que dicho conjunto tenga datos pocos significativos. Esto puede derivar en que el error de validacion sea poco fiel a la realidad, obteniendo así una red que no generalice de forma correcta (por lo que obtendríamos una brecha entre los errores más grande).
+
+    - Si tenemos un conjunto de validacion con una proporcion muy grande (tercer, cuarta y quinta distribución), no nos quedan suficientes datos para aprender. En consecuencia, puede ocurrir que la red no aprenda (ya que no tiene suficientes datos) o bien que aprenda luego de mucho tiempo y que generalice de forma incorrecta (una mayor brecha entre los errores).
+
+    En base a todo lo dicho, concluimos que la mejor proporción para los datos de Ikeda es la 75% entrenamiento y 25% validación ya que tiene un error de testeo bajo y además la brecha entre los errores es la más pequeñá.
     """)
     return
 
@@ -1332,6 +1428,18 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     # Ejercicio 4. Regularización (2).
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Recordemos como afecta gamma a nuestra red.
+
+    Gamma es un penalizador. Un escalar que multiplica a la suma de cada peso al cuadrado (o la suma de los valores absolutos de los pesos) e impacta directamente en la actualización de los pesos en cada iteración.
+
+    Un Gamma muy pequeño penalizará muy poco a dicha sumatoria, permitiendo valores de pesos elevados, lo que derivará en que la red se vuelva compleja, permitiendo un sobreajuste a los datos de entrenamiento (pequenias variaciones en el vector de entrada tendra grandes implicancias en el resultado). Por otro lado, un Gamma muy elevado penalizara mucho a la sumatoria, esto provoca que la red disminuya drasticamente los pesos. Como consecuencia, una red con pesos muy bajos hara que variaciones en el vector de entrada tengan poca influencia en el resultado, por lo que la red generalizara de mala manera.
     """)
     return
 
@@ -1396,6 +1504,14 @@ def _(MLPRegressor, cargar_csv, entrenar_red_wd):
     return (res_ej4,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Entrenamos algunas redes variando el valor de gamma. Agregamos unos casos extra que nos parecieron interesantes.
+    """)
+    return
+
+
 @app.cell
 def _(Parallel, delayed, joblib, os, res_ej4):
     _archivo_cache = "resultados_ej4.pkl"
@@ -1431,7 +1547,15 @@ def _(Parallel, delayed, joblib, os, res_ej4):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Ploteamos la tabla y los errores
+    ## Ploteamos una tabla con los resultados
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Volcamos sobre una tabla los resultados de los entrenamientos.
     """)
     return
 
@@ -1456,11 +1580,9 @@ def calc_total_errors(np):
 def _(calc_total_errors, ej4, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej4 = {
-                       "ord" : [],
-                       "gamma" : [],
-                       "avg_e_test": []
-                       # "avg_e_train": [],
-                       # "avg_min_total_err": []
+                       "Orden norma" : [],
+                       "Gamma" : [],
+                       "Error de testeo promedio": []
                      }
 
     _total_errors = []
@@ -1476,21 +1598,25 @@ def _(calc_total_errors, ej4, np, pd):
                                              ej4["gamma"][_i],
                                              ej4["ord"][_i])
             _min_total_err = min(_total_errors)
-            # _min_total_errs.append(_min_total_err)
-
             _k = _total_errors.index(_min_total_err)
-            # _errs_train.append(ej4["nnss"][_i][_j]["e_train"][_k])
             _errs_test.append(ej4["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej4["avg_e_test"].append(np.mean(_errs_test))
-        # _aux_table_ej4["avg_min_total_err"].append(np.mean(_min_total_errs))
-        # _aux_table_ej4["avg_e_train"].append(np.mean(_errs_train))
-
-        _aux_table_ej4["gamma"].append(ej4["gamma"][_i])
-        _aux_table_ej4["ord"].append(ej4["ord"][_i])
+        _aux_table_ej4["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
+        _aux_table_ej4["Gamma"].append(ej4["gamma"][_i])
+        _aux_table_ej4["Orden norma"].append(round(ej4["ord"][_i], 2))
 
     table_ej4 = pd.DataFrame(_aux_table_ej4)
     table_ej4
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Podemos notar que a partir de gamma=10^-6, se obtuvo un error menor o igual 0,008; Mientras que para los valores mayores a 10^(-3) vemos un error mayor o igual al 2%.
+
+    Grafiquemos los errores de entrenamiento y error para los distintos valores de gamma:
+    """)
     return
 
 
@@ -1502,7 +1628,6 @@ def _(calc_total_errors, ej4, ej4_cases, np, plt):
                        "gamma" : [],
                        "avg_e_test": [],
                        "avg_e_train": []
-                       # "avg_min_total_err": []
                      }
 
     _total_errors = []
@@ -1525,7 +1650,6 @@ def _(calc_total_errors, ej4, ej4_cases, np, plt):
             _errs_test.append(ej4["nnss"][_i][_j]["e_test"][_k])
 
         _aux_table_ej4_2["avg_e_test"].append(np.mean(_errs_test))
-        # _aux_table_ej4["avg_min_total_err"].append(np.mean(_min_total_errs))
         _aux_table_ej4_2["avg_e_train"].append(np.mean(_errs_train))
 
         _aux_table_ej4_2["gamma"].append(ej4["gamma"][_i])
@@ -1533,13 +1657,29 @@ def _(calc_total_errors, ej4, ej4_cases, np, plt):
 
 
     # Ploteamos los errores
-    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(15, 15), squeeze=False)
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(10, 10), squeeze=False)
 
     # graficar...
 
     plot_error_wd(_ax[0,0], _aux_table_ej4_2["avg_e_train"], _aux_table_ej4_2["avg_e_test"], ej4_cases)
 
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    A partir de estos datos, determinamos que el valor de gamma óptimo es 10^(-5). Por otra parte, elegimos el valor de gamma 10^(-12) como valor de gamma donde vemos overfitting.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Ploteamos los errores
+    """)
     return
 
 
@@ -1648,7 +1788,7 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusiones
+    ### Conclusiones de los errores
     """)
     return
 
@@ -1656,7 +1796,25 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    .
+    Con esto en cuenta, y apoyandonos en el grafico realizado, vemos como
+       valores pequenios del gamma producen overfitting disminuyendo el error de
+       train mientras que el de test se mantiene constante, llevando a la red
+       a un lugar cada vez mas inestable. A su ves, tambien vemos como valores
+       de gammas elevados como 10^-1 perjudican a la red dificultando su
+       generalizacion, aumentando asi el error de test. En este caso, tambien
+       vemos como aumenta el error de train, esto se debe a que nuestra
+       red, al penalizar tanto los pesos, pierda totalmente su capacidad
+       de prediccion (underfitting, este fenomeno nos deja ver en la grafica
+       de errores, como el error de train supera al de test, nuestra red
+       es inutil para predecir cualquier cosa, test o train).
+
+       Viendo el grafico de penalizacion, vemos como en la red con el gamma
+       optimo, a medida que entrenamos la red, esta penalizacion crece. Este
+       comportamiento es totalmente lo buscado, a medida que entrenamos
+       exhaustivamente nuestra red, necesitamos que no se acostumbre a los
+       datos de entrenamiento y para combatir esto se aumenta la penalizacion
+       de los pesos (manteniendolos en rangos aceptables). # arreglar grafico
+       poner el de overfitting
     """)
     return
 
@@ -1764,13 +1922,8 @@ def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
     ej5_paral_cases = []
 
     for _d in dimensions_ej5:
-        ej5_paral_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
-        ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
-        #ej5_paral_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
-        ej5_paral_cases.append((6, _d, 0.05, 0.3, 10**(-6), 2, 4000, 20))
-        ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
-        #ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 400, 50))
-        #ej5_paral_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 4000, 20))
+        ej5_paral_cases.append((6, _d, 0.25, 0.5, 10**(-5), 2, 400, 20))
+
 
     if os.path.exists(_archivo_cache):
         ej5_paral = joblib.load(_archivo_cache)
@@ -1805,23 +1958,17 @@ def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
 
 
         joblib.dump(ej5_paral, _archivo_cache)
-    return
+    return (ej5_paral_cases,)
 
 
 @app.cell
-def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
+def _(Parallel, delayed, dimensions_ej5, ej5_paral_cases, joblib, os, res_ej5):
     _archivo_cache = "resultados_ej5_diag.pkl"
 
     ej5_diag_cases = []
 
     for _d in dimensions_ej5:
-        #ej5_diag_cases.append((6, _d, 0.001, 0.6, 10**(-6), 2, 1000, 30))
-        #ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 400, 50))
-        #ej5_diag_cases.append((6, _d, 0.01, 0.9, 10**(-6), 2, 2000, 50))
-        ej5_diag_cases.append((6, _d, 0.05, 0.3, 10**(-6), 2, 4000, 20))
-        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 1000, 30))
-        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 400, 50))
-        #ej5_diag_cases.append((6, _d, 0.25, 0.25, 10**(-6), 2, 4000, 20))
+        ej5_paral_cases.append((6, _d, 0.25, 0.5, 10**(-5), 2, 400, 20))
 
     if os.path.exists(_archivo_cache):
         ej5_diag = joblib.load(_archivo_cache)
