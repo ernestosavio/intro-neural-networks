@@ -1958,17 +1958,17 @@ def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
 
 
         joblib.dump(ej5_paral, _archivo_cache)
-    return (ej5_paral_cases,)
+    return
 
 
 @app.cell
-def _(Parallel, delayed, dimensions_ej5, ej5_paral_cases, joblib, os, res_ej5):
+def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
     _archivo_cache = "resultados_ej5_diag.pkl"
 
     ej5_diag_cases = []
 
     for _d in dimensions_ej5:
-        ej5_paral_cases.append((6, _d, 0.25, 0.5, 10**(-5), 2, 400, 20))
+        ej5_diag_cases.append((6, _d, 0.25, 0.5, 10**(-5), 2, 400, 20))
 
     if os.path.exists(_archivo_cache):
         ej5_diag = joblib.load(_archivo_cache)
