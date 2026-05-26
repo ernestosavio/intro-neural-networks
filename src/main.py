@@ -563,7 +563,7 @@ def _(np):
         # Colocamos los labels a los ejes
         graph.set_xlabel('Epocas')
         graph.set_ylabel('Errores')
-    
+
 
         # Activamos que el fondo sea grillado y la leyenda de los líneas
         graph.grid(True)
@@ -694,11 +694,11 @@ def plot_error_dimensions(graph, dimensions, e_train_graph, e_test_graph, total_
     graph.plot(dimensions, e_test_graph, marker='o', linestyle='-', color='tab:orange', label='Error Test')
     graph.plot(dimensions, total_errors_graph, marker='o', linestyle='-', color='tab:red', label='Error Total (Penalizado)')
 
-    graph.xlabel('Dimensiones (d)')
-    graph.ylabel('Error')
-    graph.title('Evolución de los errores según la dimensionalidad')
+    graph.set_xlabel('Dimensiones (d)')
+    graph.set_ylabel('Error')
+    graph.set_title('Evolución de los errores según la dimensionalidad')
 
-    graph.xticks(dimensions) 
+    graph.set_xticks(dimensions) 
 
     graph.grid(True, linestyle='--', alpha=0.6)
     graph.legend()
@@ -1051,9 +1051,9 @@ def _(mo):
 def _(ej2, np, pd):
     # Creamos y mostramos la tabla
     _aux_table_ej2 = {
-                       "learning_rate": [],
-                       "momentum": [],
-                       "avg_e_test": [],
+                       "Learning rate": [],
+                       "Momentum": [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej2["nns"])):
@@ -1063,10 +1063,9 @@ def _(ej2, np, pd):
             _k = ej2["nns"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej2["nns"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej2["avg_e_test"].append(round(np.mean(_errs_test),4))
-
-        _aux_table_ej2["momentum"].append(round(ej2["momentum"][_i],2))
-        _aux_table_ej2["learning_rate"].append(round(ej2["learning_rate"][_i],2))
+        _aux_table_ej2["Error de testeo promedio"].append(round(np.mean(_errs_test),4))
+        _aux_table_ej2["Momentum"].append(round(ej2["momentum"][_i],2))
+        _aux_table_ej2["Learning rate"].append(round(ej2["learning_rate"][_i],2))
 
     table_ej2 = pd.DataFrame(_aux_table_ej2)
     table_ej2
@@ -1124,10 +1123,12 @@ def _(mo):
     - Cuando fijamos el momentum en 0.9, vimos que este rango pareciera comenzar cuando el learning rate es mayor o igual a 0.01 y pareciera terminar cuando el learning_rate es mayor igual a 0.2
     - Cuando fijamos el momentum en 0, vimos que este rango pareciera comenzar con eta mayor igual a 0.1 y no vimos donde terminaba (solo podemos deducir que seguimos obteniendo valores de error aceptables para eta = 0.3).
 
-    Basandonos
-
-    - Learning rate: Entre 0.1 y 0.3
-    - Momentum: Cercano a 0.5
+    Si bien fijar un hiper-parámetro nos brinda un rango aceptable para
+    el restante, esto no significa que en dicho rango se encuentre la solucion
+    optima.
+    En nuestro problema pudimos observar que la combinacion de hiper-parámetros
+    que minimizan el error de test se encuentra con valores de learning rate
+    entre 0.1 y 0.3 y valores de momentum cercano a 0.5.
     """)
     return
 
@@ -1143,7 +1144,7 @@ def _(mo):
 @app.cell
 def _(ej2, plot_errors, plt, table_ej2):
     # Obtenemos el índice de la entrada del menor error promedio de test
-    _k = table_ej2["avg_e_test"].idxmin()
+    _k = table_ej2["Error de testeo promedio"].idxmin()
 
     _find_min_val = []
 
@@ -1763,11 +1764,11 @@ def _(calc_total_errors, ej4, gammas, plot_errors_wd, plt):
         _nn = ej4["nnss"][_i][_k]
 
         plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
- 
+
         _ax[_cont, 0].set_title(f"Errores MSE  - Gamma: {ej4["gamma"][_i]} ")
-    
+
         _cont += 1
-    
+
     plt.tight_layout()
     plt.show()
     return
@@ -1783,7 +1784,6 @@ def _(mo):
 
 app._unparsable_cell(
     r"""
-
     # GRÁFICA DE LA PENALIZACIÓN
     _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 10, squeeze=False)
 
@@ -1820,7 +1820,7 @@ app._unparsable_cell(
 
         _ax[_cont, 0].set_title(f"Penalización - Gamma: {ej4["gamma"][_i]} ")
         _cont += 1
-    
+
     plt.tight_layout()
     plt.show()
     """,
@@ -1863,7 +1863,7 @@ def _():
 
 @app.cell
 def _(MLPClassifier, diagonales, entrenar_red_wd_clasf, np, paralelas):
-    def res_ej5(d, N2, eta, alfa, gamma, ord, super_epocas, sub_epocas, gen="paral"):
+    def res_ej5(N2, d, eta, alfa, gamma, ord, super_epocas, sub_epocas, gen="paral"):
         # Parámetros:
         # d := Dimensiones de los datos generados
         # N2 := neuronas en la capa oculta
@@ -1991,7 +1991,7 @@ def _(Parallel, delayed, dimensions_ej5, joblib, os, res_ej5):
 
 
         joblib.dump(ej5_paral, _archivo_cache)
-    return
+    return (ej5_paral,)
 
 
 @app.cell
@@ -2048,6 +2048,46 @@ def _(mo):
 
 
 @app.cell
+def _(calc_total_errors, ej5_paral, np, pd):
+    # Creamos y mostramos la tabla para encontrar la mejor red
+    _aux_table_ej5 = {
+                       "d" : [],
+                       "learning_rate" : [],
+                       "momentum" : [],
+                       "gamma" : [],
+                       "ord" : [],
+                       "super_epocas" : [],
+                       "sub_epocas" : [],
+                       "avg_e_test": [],
+                     }
+
+    for _i in range(len(ej5_paral["nnss"])):
+        _errs_test = []
+        for _j in range(len(ej5_paral["nnss"][_i])):
+            _total_errors = calc_total_errors(ej5_paral["nnss"][_i][_j]["e_train"], 
+                                             ej5_paral["nnss"][_i][_j]["norm_weight"],
+                                             ej5_paral["gamma"][_i],
+                                             ej5_paral["ord"][_i])
+            _min_total_err = min(_total_errors)
+            _k = _total_errors.index(_min_total_err)
+            _errs_test.append(ej5_paral["nnss"][_i][_j]["e_test"][_k])
+
+        _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
+
+        _aux_table_ej5["d"].append(ej5_paral["d"][_i])
+        _aux_table_ej5["learning_rate"].append(ej5_paral["learning_rate"][_i])
+        _aux_table_ej5["momentum"].append(ej5_paral["momentum"][_i])
+        _aux_table_ej5["gamma"].append(ej5_paral["gamma"][_i])
+        _aux_table_ej5["ord"].append(ej5_paral["ord"][_i])
+        _aux_table_ej5["super_epocas"].append(ej5_paral["super_epocas"][_i])
+        _aux_table_ej5["sub_epocas"].append(ej5_paral["sub_epocas"][_i])
+
+    table_ej5_paral = pd.DataFrame(_aux_table_ej5)
+    table_ej5_paral
+    return
+
+
+@app.cell
 def _(calc_total_errors, ej5_diag, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej5 = {
@@ -2082,35 +2122,35 @@ def _(calc_total_errors, ej5_diag, np, pd):
         _aux_table_ej5["super_epocas"].append(ej5_diag["super_epocas"][_i])
         _aux_table_ej5["sub_epocas"].append(ej5_diag["sub_epocas"][_i])
 
-    table_ej5 = pd.DataFrame(_aux_table_ej5)
-    table_ej5
+    table_ej5_diag = pd.DataFrame(_aux_table_ej5)
+    table_ej5_diag
     return
 
 
 @app.cell
-def _(calc_total_errors, dimensions_ej5, ej4, plot_errors_wd, plt):
-    # GRÁFICA DE LOS ERRORES
-    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+def _(calc_total_errors, dimensions_ej5, ej5_paral, plot_errors_wd, plt):
+    # GRÁFICA DE LOS ERRORES PARALELAS
+    _, _ax = plt.subplots(len(dimensions_ej5), 1, sharey=True, figsize=(20, 40), squeeze=False)
 
     _cont = 0
 
-    for _d in dimensions_ej5:
+    for _d in range(len(dimensions_ej5)):
         # Lista de los errores totales mínimos de cada época
         _min_errors = []
 
         # Nos quedamos con la mejor red para el parámetro 'best_gamma'
-        for _j in range(len(ej4["nnss"][_d])):
+        for _j in range(len(ej5_paral["nnss"][_d])):
             # Obtengo la lista de errores de test
-            _e_train = ej4["nnss"][_d][_j]["e_train"]
+            _e_train = ej5_paral["nnss"][_d][_j]["e_train"]
 
             # Obtenemos la norma de los pesos
-            _norm_weights = ej4["nnss"][_d][_j]["norm_weight"]
+            _norm_weights = ej5_paral["nnss"][_d][_j]["norm_weight"]
 
             # Obtenemos el orden de la norma
-            _ord = ej4["ord"][_d]
+            _ord = ej5_paral["ord"][_d]
 
             # Obtenemos el gamma
-            _gamma = ej4["gamma"][_d]
+            _gamma = ej5_paral["gamma"][_d]
 
             # Calculamos el error total mínimo de entre todas las épocas
             _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
@@ -2119,9 +2159,11 @@ def _(calc_total_errors, dimensions_ej5, ej4, plot_errors_wd, plt):
         _k = _min_errors.index(min(_min_errors))
 
         # Nos quedamos con la red asociada a ese valor, y la ploteamos
-        _nn = ej4["nnss"][_d][_k]
+        _nn = ej5_paral["nnss"][_d][_k]
 
-        plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej4["super_epocas"][_d], ej4["sub_epocas"][_d])
+        plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej5_paral["super_epocas"][_d], ej5_paral["sub_epocas"][_d])
+
+        _ax[_d, 0].set_title(f"Dimensión: {dimensions_ej5[_d]}")
 
         _cont += 1
 
@@ -2130,62 +2172,220 @@ def _(calc_total_errors, dimensions_ej5, ej4, plot_errors_wd, plt):
 
 
 @app.cell
-def _(
-    calc_total_errors,
-    dimensions_ej5,
-    e_train_graph,
-    ej5,
-    min_errors,
-    plt,
-    total_errors_graph,
-):
-    _e_train_graph = []
-    _e_test_graph = []
-    _total_errors_graph = []
+def _(calc_total_errors, dimensions_ej5, ej5_diag, plot_errors_wd, plt):
+    # GRÁFICA DE LOS ERRORES DIAGONALES
+    _, _ax = plt.subplots(len(dimensions_ej5), 1, sharey=True, figsize=(20, 40), squeeze=False)
 
-    for _i in range(len(dimensions_ej5)):
+    _cont = 0
+
+    for _d in range(len(dimensions_ej5)):
+        # Lista de los errores totales mínimos de cada época
         _min_errors = []
-        _total_errors_list = []
 
-        for _j in range(len(ej5["nnss"][_i])):
-            # Obtengo la lista de errores de train
-            _e_train = ej5["nnss"][_i][_j]["e_train"]
+        # Nos quedamos con la mejor red para el parámetro 'best_gamma'
+        for _j in range(len(ej5_diag["nnss"][_d])):
+            # Obtengo la lista de errores de test
+            _e_train = ej5_diag["nnss"][_d][_j]["e_train"]
 
             # Obtenemos la norma de los pesos
-            _norm_weights = ej5["nnss"][_i][_j]["norm_weight"]
+            _norm_weights = ej5_diag["nnss"][_d][_j]["norm_weight"]
 
             # Obtenemos el orden de la norma
-            _ord = ej5["ord"][_i]
+            _ord = ej5_diag["ord"][_d]
 
             # Obtenemos el gamma
-            _gamma = ej5["gamma"][_i]
-
-            _total_errors = calc_total_errors(_e_train, _norm_weights, _gamma, _ord)
-            _total_errors_list.append(_total_errors)
+            _gamma = ej5_diag["gamma"][_d]
 
             # Calculamos el error total mínimo de entre todas las épocas
-            min_errors.append(min(_total_errors))
+            _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
 
-        _min_total_err = min(min_errors)
-        # Obtenemos el índice con la red con menor total error
-        _k = min_errors.index(_min_total_err)
+        # Obtenemos el índice
+        _k = _min_errors.index(min(_min_errors))
 
-        # Nos quedamos con la red asociada a ese valor
-        _nn = ej5["nnss"][_i][_k]
+        # Nos quedamos con la red asociada a ese valor, y la ploteamos
+        _nn = ej5_diag["nnss"][_d][_k]
 
-        # Super epoca en la que se logra el _min_total_err dentro
-        # de la mejor red
-        _e = _total_errors_list[_k].index(_min_total_err)
+        plot_errors_wd(_ax[_cont,0], _nn["e_train"], _nn["e_test"], ej5_diag["super_epocas"][_d], ej5_diag["sub_epocas"][_d])
 
-        _e_test_graph.append(_nn["e_test"][_e])
-        _e_train_graph.append(_nn["e_train"][_e])
-        _total_errors_graph.append(_min_total_err)
+        _ax[_d, 0].set_title(f"Dimensión: {dimensions_ej5[_d]}")
 
-
-    _graph = plt.figure(figsize=(12, 8))
-    plot_error_dimensions(_graph, dimensions_ej5, _e_test_graph, e_train_graph, total_errors_graph)
+        _cont += 1
 
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Graficamos los errores en base a la dimensionalidad
+    """)
+    return
+
+
+@app.cell
+def _(calc_total_errors, dimensions_ej5):
+    def obtain_err_data_graph(ej5):
+        _e_train_graph = []
+        _e_test_graph = []
+
+        for _i in range(len(dimensions_ej5)):
+            _min_errors = []
+            _total_errors_list = []
+
+            for _j in range(len(ej5["nnss"][_i])):
+                # Obtengo la lista de errores de train
+                _e_train = ej5["nnss"][_i][_j]["e_train"]
+
+                # Obtenemos la norma de los pesos
+                _norm_weights = ej5["nnss"][_i][_j]["norm_weight"]
+
+                # Obtenemos el orden de la norma
+                _ord = ej5["ord"][_i]
+
+                # Obtenemos el gamma
+                _gamma = ej5["gamma"][_i]
+
+                _total_errors = calc_total_errors(_e_train, _norm_weights, _gamma, _ord)
+                _total_errors_list.append(_total_errors)
+
+                # Calculamos el error total mínimo de entre todas las épocas
+                _min_errors.append(min(_total_errors))
+
+            _min_total_err = min(_min_errors)
+            # Obtenemos el índice con la red con menor total error
+            _k = _min_errors.index(_min_total_err)
+
+            # Nos quedamos con la red asociada a ese valor
+            _nn = ej5["nnss"][_i][_k]
+
+            # Super epoca en la que se logra el _min_total_err dentro
+            # de la mejor red
+            _e = _total_errors_list[_k].index(_min_total_err)
+
+            _e_test_graph.append(_nn["e_test"][_e])
+            _e_train_graph.append(_nn["e_train"][_e])
+
+        return _e_test_graph, _e_train_graph
+
+    return (obtain_err_data_graph,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Traemos el codigo de arboles explicitamente
+    """)
+    return
+
+
+@app.cell
+def _():
+    # Importamos el codigo general de arboles de desicion
+    import desicion_tree as dt
+
+    return (dt,)
+
+
+@app.cell
+def _(dt):
+    def tree_dimensions_problem():
+        C = 0.78
+        n_train = 250
+        n_test  = 10000
+        m = 20
+
+        Ds = [2, 4, 8, 16, 32]
+
+        diag_train = []
+        diag_test = []
+
+        paralel_train = []
+        paralel_test = []
+
+        for d in Ds:
+            res_diag = dt.run_experiment("diagonal", [n_train], d, C, m, n_test)
+            res_par = dt.run_experiment("paralelas", [n_train], d, C, m, n_test)
+
+            diag_train.append(res_diag["avg_train_loss"])
+            diag_test.append(res_diag["avg_test_loss"])
+
+            paralel_train.append(res_par["avg_train_loss"])
+            paralel_test.append(res_par["avg_test_loss"])
+
+
+        return paralel_test, diag_test, paralel_train, diag_train
+
+    return (tree_dimensions_problem,)
+
+
+@app.cell
+def _(
+    dimensions_ej5,
+    ej5_diag,
+    ej5_paral,
+    obtain_err_data_graph,
+    plt,
+    tree_dimensions_problem,
+):
+    _e_test_graph_paral, _e_train_graph_paral = obtain_err_data_graph(ej5_paral)
+    _e_test_graph_diag, _e_train_graph_diag = obtain_err_data_graph(ej5_diag)
+
+    _e_test_graph_tree_paral, _e_test_graph_tree_diag, _e_train_graph_tree_paral, _e_train_graph_tree_diag = tree_dimensions_problem()
+
+    _, _ax = plt.subplots(1, 1, figsize=(12, 8), squeeze=False)
+
+    _ax[0, 0].plot(dimensions_ej5, _e_train_graph_paral, marker='o', linestyle=':', color='tab:blue', label='Error Train Paralelas')
+    _ax[0, 0].plot(dimensions_ej5, _e_test_graph_paral, marker='o', linestyle='-', color='tab:orange', label='Error Test Paralelas')
+
+    _ax[0, 0].plot(dimensions_ej5, _e_train_graph_diag, marker='o', linestyle=':', color='tab:red', label='Error Train Diagonales')
+    _ax[0, 0].plot(dimensions_ej5, _e_test_graph_diag, marker='o', linestyle='-', color='tab:green', label='Error Test Diagonales')
+
+    _ax[0, 0].plot(dimensions_ej5, _e_train_graph_tree_paral, marker='o', linestyle='--', color='tab:pink', label='Error Train Paralelas Árbol')
+    _ax[0, 0].plot(dimensions_ej5, _e_test_graph_tree_paral, marker='o', linestyle='-.', color='tab:olive', label='Error Test Paralelas Árbol')
+
+    _ax[0, 0].plot(dimensions_ej5, _e_train_graph_tree_diag, marker='o', linestyle='--', color='tab:brown', label='Error Train Diagonales Árbol')
+    _ax[0, 0].plot(dimensions_ej5, _e_test_graph_tree_diag, marker='o', linestyle='-.', color='tab:purple', label='Error Test Diagonales Árbol')
+
+    _ax[0, 0].set_xlabel('Dimensiones (d)')
+    _ax[0, 0].set_ylabel('Error')
+    _ax[0, 0].set_title('Evolución de los errores según la dimensionalidad')
+
+    _ax[0, 0].set_xticks(dimensions_ej5) 
+
+    _ax[0, 0].grid(True, linestyle='--', alpha=0.6)
+    _ax[0, 0].legend()
+
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Conclusiones Arboles vs Redes Neuronales
+    Enfoquemosnos primero en las paralelas. Con esta generacion de datos
+    podemos ver como las redes neuronales sobre-ajustan los datos de entrenamiento
+    en mayor medida que los arboles de decision, llevando el error de train a cero practicamente.
+    [POR QUE?]
+    Mientras tanto, utilizando diagonales los arboles de decision tienen
+    un desempenio mucho peor. El error de test se eleva mas que el doble que su
+    par en redes neuronales, esto expone que en este caso, los arboles
+    tienen un mayor overfitting
+    [POR QUE ?]
+
+    De forma general, vemos que las redes neuronales son mas estables frente
+    al aumento de dimensiones, la generacion de datos no tiene tanta
+    implicancia a la hora de perder generalizacion debido a la complejización
+    de los datos
+    [POR QUE ?]
+    Si bien con redes neuronales vemos un comportamiento de overfitting, no hay
+    que perder de vista que estamos limitandonos a tener 6 neuronas en la capa
+    intermedia. Aun asi, con esta restriccion, las redes son mas estables que
+    los arboles frente a la generacion de datos. Pareciese ser, que las
+    redes neuronales tienen una mayor capacidad resolutiva que los arboles
+    de decision.
+    """)
     return
 
 
