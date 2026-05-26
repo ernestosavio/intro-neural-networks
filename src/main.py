@@ -684,7 +684,7 @@ def _(np):
 
         return graph
 
-    return
+    return (plot_penalization,)
 
 
 @app.function
@@ -1783,8 +1783,8 @@ def _(mo):
     return
 
 
-@app.cell()
-def _(plt, gammas, ej4, plot_penalization):
+@app.cell
+def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
     # GRÁFICA DE LA PENALIZACIÓN
     _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 10), squeeze=False)
 
@@ -1824,8 +1824,7 @@ def _(plt, gammas, ej4, plot_penalization):
 
     plt.tight_layout()
     plt.show()
-
-    return 
+    return
 
 
 @app.cell(hide_code=True)
@@ -2599,14 +2598,114 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # neurons: 3 esta bien (a lo sumo 30, solo ganamos 1%-2
-    # learning rate: 0.3
-    # momentum: 0.3
-    # Full gradient descent was used in all  these experiments
-    # Network weights in the output units were initial-  ized to small random values. However, input unit weights were initialized to zero,  because this yields much more intelligible visualizations of the learned weights  
-    # sub epocas: 50
-    # super epocas: 1 ? 
+def _(cargar_csv, skl):
+    def cargar_datos_ej6(val_per):
+        # Cargamos los datos
+        X, y = cargar_csv('./data/faces.data', 960)
+
+        # Spliteamos el training y validacion
+        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per)
+        return X_train, X_val, y_train, y_val
+
+    return (cargar_datos_ej6,)
+
+
+@app.cell
+def _(MLPClassifier, cargar_csv, cargar_datos_ej6, entrenar_red):
+    def res_ej6_b():
+        # neurons: 3 esta bien (a lo sumo 30, solo ganamos 1%-2
+        # learning rate: 0.3
+        # momentum: 0.3
+        # Full gradient descent was used in all  these experiments
+        # Network weights in the output units were initial-  ized to small random values. However, input unit weights were initialized to zero,  because this yields much more intelligible visualizations of the learned weights  
+        # sub epocas: 50
+        # super epocas: 1 ? 
+
+        iter = 10
+
+        # Parámetros
+        eta = 0.3             # eta := learning rate
+        alfa = 0.3             # alfa := momentum
+        sub_epocas = 50       # numero de epocas que entrena cada vez
+        eval = 1            # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        N2 = 3     # neuronas en la capa oculta
+        val_perc = 0.25         # porcentaje de validación
+        train_perc = round(1 - val_perc,2) # porcentaje de validación
+
+        # Cargamos los datos de test
+        X_test, y_test = cargar_csv('./data/faces.test', 960)
+
+        nns = []
+
+        for i in range(iter):
+            # Cargamos los datos de entrenamiento y validación
+            X_train, X_val, y_train, y_val = cargar_datos_ej6(val_perc)
+
+
+            # Defino MLP para clasificación
+            clasif = MLPClassifier(
+                hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
+                batch_size=1, learning_rate='constant', learning_rate_init=eta,
+                momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
+                max_iter=sub_epocas
+            )
+
+            # Corremos el entrenamiento
+            clasif, e_train, e_val, e_test = entrenar_red(clasif, eval, X_train, y_train, X_val, y_val, X_test, y_test)
+
+            # Guardamos el resultado
+            nns.append( {"nn"    : clasif,
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test})
+
+        return { 
+                 "nns" : nns,
+                 "neurons" : N2, 
+                 "learning_rate" : eta,
+                 "momentum" : alfa,
+                 "train_perc" : train_perc,
+                 "val_perc" : val_perc,
+                 "super_epocas" : eval,
+                 "sub_epocas" : sub_epocas
+               }
+
+    return (res_ej6_b,)
+
+
+@app.cell
+def _(joblib, os, res_ej6_b):
+    _archivo_cache = "resultados_ej6_b.pkl"
+
+    if os.path.exists(_archivo_cache):
+        ej6_b = joblib.load(_archivo_cache)
+    else:
+
+        ej6_b = {
+                 "nnss" : [],
+                 "neurons" : [],
+                 "learning_rate" : [],
+                 "momentum" : [],
+                 "train_perc" : [],
+                 "val_perc" : [],
+                 "super_epocas" : [],
+                 "sub_epocas" : []
+               }
+
+        _res = res_ej6_b()
+
+        ej6_b["nnss"].append(_res["nns"])
+        ej6_b["neurons"].append(_res["neurons"])
+        ej6_b["learning_rate"].append(_res["learning_rate"])
+        ej6_b["momentum"].append(_res["momentum"])
+        ej6_b["train_perc"].append(_res["train_perc"])
+        ej6_b["val_perc"].append(_res["val_perc"])
+        ej6_b["super_epocas"].append(_res["super_epocas"])
+        ej6_b["sub_epocas"].append(_res["sub_epocas"])
+
+
+        joblib.dump(ej6_b, _archivo_cache)
     return
 
 
