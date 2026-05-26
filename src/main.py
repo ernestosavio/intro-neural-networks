@@ -35,12 +35,14 @@ def _():
     from sklearn.neural_network import MLPClassifier
     from sklearn.metrics import mean_squared_error, zero_one_loss
     from sklearn.datasets import load_iris
+    from sklearn.preprocessing import MinMaxScaler
 
     from copy import deepcopy
 
     return (
         MLPClassifier,
         MLPRegressor,
+        MinMaxScaler,
         Parallel,
         deepcopy,
         delayed,
@@ -1830,7 +1832,7 @@ def _(calc_total_errors, ej4, gammas, plot_penalization, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Nuevamente, estas gráficas parecen coincidir con nuestro análisis hecho al inicio del ejercicio. Observamos que el valor más grande de $\\\\gamma$ tiene una mayor penzalización que el valor más pequeño de $\\\\gamma$.
+    Nuevamente, estas gráficas parecen coincidir con nuestro análisis hecho al inicio del ejercicio. Observamos que el valor más grande de $\gamma$ tiene una mayor penzalización que el valor más pequeño de $\gamma$.
     """)
     return
 
@@ -2125,8 +2127,16 @@ def _(calc_total_errors, ej5_diag, np, pd):
     return
 
 
-app._unparsable_cell(
-    r"""
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Graficamos los errores con paralelas
+    """)
+    return
+
+
+@app.cell
+def _(calc_total_errors, dimensions_ej5, ej5_paral, plot_errors_wd, plt):
     # GRÁFICA DE LOS ERRORES PARALELAS
     _, _ax = plt.subplots(len(dimensions_ej5), 1, sharey=True, figsize=(20, 40), squeeze=False)
 
@@ -2167,9 +2177,14 @@ app._unparsable_cell(
 
     plt.show()
     return
-    """,
-    name="_"
-)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Graficamos los errores con diagonales
+    """)
+    return
 
 
 @app.cell
@@ -2213,6 +2228,39 @@ def _(calc_total_errors, dimensions_ej5, ej5_diag, plot_errors_wd, plt):
         _cont += 1
 
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Análisis de las gráficas
+
+    Antes de analizar las graficas recordemos como afecta la
+    cantidad de neuronas en la capa intermedia al poder resolutivo de nuestra red.
+    Un mayor numero de neuronas, permite que la red represente y resuelva
+    cosas de mayor complejidad (podemos formar funciones mas complejas).
+
+    Teniendo esto en mente, veamos que sucede al variar las dimensiones.
+    Al aumentar las dimensiones, el conjunto de datos a clasificar
+    se vuelve mas complejo.
+
+    Ahora, si le sumamos la restriccion de tener un numero de neuronas (de la capa intermedia) constante
+    (en un numero no tan elevado) mientras aumentamos las dimensiones de nuestros datos,
+    por lo explicado anteriormente, nuestra red empieza a perder la capacidad
+    de generalización y poder resolutivo que tenia en dimensiones mas bajas.
+    En otras palabras, aumentamos la complejidad del problema, pero no asi el poder
+    expresivo y resolutivo de la misma. Esto conlleva a peores resultados.
+
+    Al graficar los errores de entrenamiento y testeo, vemos como
+    al aumentar las dimensione aumenta el overfitting (aumenta el error
+    de test y disminuye el de entrenamiento). Resultado esperado luego
+    del análisis hecho anteriormente.
+
+    Por otro lado, vemos como las diagonales mantienen un mejor resultado
+    al aumentar la cantidad de dimensiones (producen menos overfitting).
+    Parecerian presentar menos inconvenientes a la hora de su clasificacion.
+    """)
     return
 
 
@@ -2364,28 +2412,28 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusiones Arboles vs Redes Neuronales
-    Enfoquemosnos primero en las paralelas. Con esta generacion de datos
-    podemos ver como las redes neuronales sobre-ajustan los datos de entrenamiento
-    en mayor medida que los arboles de decision, llevando el error de train a cero practicamente.
-    [POR QUE?]
-    Mientras tanto, utilizando diagonales los arboles de decision tienen
-    un desempenio mucho peor. El error de test se eleva mas que el doble que su
-    par en redes neuronales, esto expone que en este caso, los arboles
-    tienen un mayor overfitting
-    [POR QUE ?]
+    ## Conclusiones Árboles vs Redes Neuronales
+    Enfoquémonos primero en los resultados de usar paralelas. Con esta generación
+    de datos podemos ver como las redes neuronales sobre-ajustan los datos de
+    entrenamiento en mayor medida que los árboles de decisión, llevando el error
+    de entrenamiento prácticamente a cero.
 
-    De forma general, vemos que las redes neuronales son mas estables frente
-    al aumento de dimensiones, la generacion de datos no tiene tanta
-    implicancia a la hora de perder generalizacion debido a la complejización
-    de los datos
-    [POR QUE ?]
+    Por otro lado, en los resultados de usar diagonales podemos ver que los
+    árboles de decisión tienen un desempeño mucho peor. El error de testeo se
+    eleva más que el doble con respecto al error de testeo en redes neuronales.
+    Esto expone que, en este caso, los árboles
+    tienen un mayor overfitting que las redes neuronales.
+
+    En este ejercicio vemos que por lo general, las redes neuronales son mas estables frente
+    al aumento de dimensiones, es decir, son mas estables al complejizar los
+    datos de entrada. A su vez, la generación de datos no tiene tanta
+    implicancia a la hora de aumentar las dimensiones.
+
     Si bien con redes neuronales vemos un comportamiento de overfitting, no hay
-    que perder de vista que estamos limitandonos a tener 6 neuronas en la capa
-    intermedia. Aun asi, con esta restriccion, las redes son mas estables que
-    los arboles frente a la generacion de datos. Pareciese ser, que las
-    redes neuronales tienen una mayor capacidad resolutiva que los arboles
-    de decision.
+    que perder de vista que estamos limitando la cantidad de neuronas en la capa
+    intermedia. Aun con esta restricción, las redes son mas estables que los
+    árboles frente al aumento de la dimensionalidad. Pareciese ser, que las redes
+    neuronales tienen una mayor capacidad resolutiva que los árboles de decisión.
     """)
     return
 
@@ -2599,25 +2647,31 @@ def _(mo):
 
 @app.cell
 def _(cargar_csv, skl):
-    def cargar_datos_ej6(val_per):
+    def cargar_datos_ej6(val_per, scaler):
         # Cargamos los datos
         X, y = cargar_csv('./data/faces.data', 960)
 
         # Spliteamos el training y validacion
         X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per)
-        return X_train, X_val, y_train, y_val
+
+        # Re-escalamos los datos
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_val_scaled = scaler.fit_transform(X_val)
+
+        return X_train_scaled, X_val_scaled, y_train, y_val
 
     return (cargar_datos_ej6,)
 
 
 @app.cell
-def _(MLPClassifier, cargar_csv, cargar_datos_ej6, entrenar_red):
+def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
     def res_ej6_b():
         # neurons: 3 esta bien (a lo sumo 30, solo ganamos 1%-2
         # learning rate: 0.3
         # momentum: 0.3
         # Full gradient descent was used in all  these experiments
         # Network weights in the output units were initial-  ized to small random values. However, input unit weights were initialized to zero,  because this yields much more intelligible visualizations of the learned weights  
+        # Provided cross-validation methods are used to determine how many gradient descent  iterations should be performed
         # sub epocas: 50
         # super epocas: 1 ? 
 
@@ -2626,36 +2680,51 @@ def _(MLPClassifier, cargar_csv, cargar_datos_ej6, entrenar_red):
         # Parámetros
         eta = 0.3             # eta := learning rate
         alfa = 0.3             # alfa := momentum
-        sub_epocas = 50       # numero de epocas que entrena cada vez
-        eval = 1            # numero de veces que realizaremos sub-epocas
+        sub_epocas = 50 #1       # numero de epocas que entrena cada vez
+        eval = 400 #50            # numero de veces que realizaremos sub-epocas
         # epocas ~= sub_epocas * super_epocas
         N2 = 3     # neuronas en la capa oculta
         val_perc = 0.25         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
 
-        # Cargamos los datos de test
-        X_test, y_test = cargar_csv('./data/faces.test', 960)
+        # Escalador de datos a [0, 1]
+        scaler = MinMaxScaler(feature_range=(0, 1))
 
         nns = []
 
         for i in range(iter):
             # Cargamos los datos de entrenamiento y validación
-            X_train, X_val, y_train, y_val = cargar_datos_ej6(val_perc)
+            X_train, X_val, y_train, y_val = cargar_datos_ej6(val_perc, scaler)
+
+            # Cargamos los datos de test
+            X, y_test = cargar_csv('./data/faces.test', 960)
+
+            # Re-escalamos los datos
+            X_test = scaler.transform(X)
+
 
 
             # Defino MLP para clasificación
-            clasif = MLPClassifier(
+            classf = MLPClassifier(
                 hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
                 batch_size=1, learning_rate='constant', learning_rate_init=eta,
                 momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
                 max_iter=sub_epocas
             )
 
-            # Corremos el entrenamiento
-            clasif, e_train, e_val, e_test = entrenar_red(clasif, eval, X_train, y_train, X_val, y_val, X_test, y_test)
+            # if not hasattr(classf, 'coefs_'):
+    # Le pasamos todos los datos (X_train entero) para que inicialice la 
+    # arquitectura sin quejarse de que le faltan clases.
+    # Esto hace 1 sola mini-época de inicialización.
+                # classf.partial_fit(X_train, y_train, classes=np.unique(y_train))
+
+                # Sobrescribimos la matriz de Entrada->Oculta con ceros absolutos
+                # classf.coefs_[0] = np.zeros_like(classf.coefs_[0])# Corremos el entrenamiento
+
+            classf, e_train, e_val, e_test = entrenar_red(classf, eval, X_train, y_train, X_val, y_val, X_test, y_test)
 
             # Guardamos el resultado
-            nns.append( {"nn"    : clasif,
+            nns.append( {"nn"    : classf,
                          "e_train"   : e_train,
                          "e_val"     : e_val,
                          "e_test"    : e_test})
@@ -2706,6 +2775,44 @@ def _(joblib, os, res_ej6_b):
 
 
         joblib.dump(ej6_b, _archivo_cache)
+    return (ej6_b,)
+
+
+@app.cell
+def _(ej6_b, plot_errors, plt):
+    _k = 0
+    _find_min_val = []
+
+    # print(ej6_b["super_epocas"][_k])
+    # print(ej6_b["sub_epocas"][_k])
+
+    for _j in range(len(ej6_b["nnss"][_k])):
+        _find_min_val.append(min(ej6_b["nnss"][_k][_j]["e_val"]))
+
+    # print(_find_min_val)
+
+    _i = _find_min_val.index(min(_find_min_val))
+
+    _e_train = ej6_b["nnss"][_k][_i]["e_train"]
+    _e_val = ej6_b["nnss"][_k][_i]["e_val"]
+    _e_test = ej6_b["nnss"][_k][_i]["e_test"]
+
+    # print(_e_train)
+    # print(_e_val)
+    # print(_e_test)
+
+    # Ploteamos los errores
+    _, _ax = plt.subplots(1, 1, sharey=True, figsize=(25, 10), squeeze=False)
+
+    plot_errors(_ax[0, 0], _e_train,
+                    _e_test, _e_val,
+                    ej6_b["super_epocas"][_k], ej6_b["sub_epocas"][_k])
+
+    _ax[0, 0].set_title(f"Errores de entrenamiendo, validación y test")
+
+    # print("")
+
+    plt.show()
     return
 
 
