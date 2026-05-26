@@ -870,7 +870,7 @@ def _(mo):
     Comparando con la clasificación hecha con arboles de decision vemos que,
     a pesar del tiempo de entrenamiento de las redes neuronales (que es
     mayor) se obtiene una peor clasificación. De esta manera, podemos decir
-    que las redes neuronales son mas costosas que los arboles de decision.
+    que las redes neuronales son más costosas que los arboles de decision.
 
     En nuestra opinion, la razón de la superioridad de arboles en la
     clasificación viene de que los arboles de decision son un método de
@@ -902,7 +902,7 @@ def _(mo):
 
     Un learning rate bajo hace que los pesos se ajusten de a poco. Esto puede provocar que el valor de los pesos se quede estancado en un mínimo local (ya que la derivada
     parcial es igual a 0). En contraposición, un learning rate alto ajusta los pesos de manera
-    mas agresiva, esto puede provocar que los valores de los pesos se escapen o sobrepasen
+    más agresiva, esto puede provocar que los valores de los pesos se escapen o sobrepasen
     mínimos locales, pero puede que además sobrepasen al mínimo global.
 
     **Momentum**
@@ -2236,20 +2236,20 @@ def _(mo):
     mo.md(r"""
     ## Análisis de las gráficas
 
-    Antes de analizar las graficas recordemos como afecta la
+    Antes de analizar las gráficas recordemos como afecta la
     cantidad de neuronas en la capa intermedia al poder resolutivo de nuestra red.
     Un mayor numero de neuronas, permite que la red represente y resuelva
-    cosas de mayor complejidad (podemos formar funciones mas complejas).
+    cosas de mayor complejidad (podemos formar funciones más complejas).
 
     Teniendo esto en mente, veamos que sucede al variar las dimensiones.
     Al aumentar las dimensiones, el conjunto de datos a clasificar
-    se vuelve mas complejo.
+    se vuelve más complejo.
 
-    Ahora, si le sumamos la restriccion de tener un numero de neuronas (de la capa intermedia) constante
+    Ahora, si le sumamos la restricción de tener un numero de neuronas (de la capa intermedia) constante
     (en un numero no tan elevado) mientras aumentamos las dimensiones de nuestros datos,
     por lo explicado anteriormente, nuestra red empieza a perder la capacidad
-    de generalización y poder resolutivo que tenia en dimensiones mas bajas.
-    En otras palabras, aumentamos la complejidad del problema, pero no asi el poder
+    de generalización y poder resolutivo que tenia en dimensiones más bajas.
+    En otras palabras, aumentamos la complejidad del problema, pero no así el poder
     expresivo y resolutivo de la misma. Esto conlleva a peores resultados.
 
     Al graficar los errores de entrenamiento y testeo, vemos como
@@ -2259,7 +2259,7 @@ def _(mo):
 
     Por otro lado, vemos como las diagonales mantienen un mejor resultado
     al aumentar la cantidad de dimensiones (producen menos overfitting).
-    Parecerian presentar menos inconvenientes a la hora de su clasificacion.
+    Parecerían presentar menos inconvenientes a la hora de su clasificación.
     """)
     return
 
@@ -2424,14 +2424,14 @@ def _(mo):
     Esto expone que, en este caso, los árboles
     tienen un mayor overfitting que las redes neuronales.
 
-    En este ejercicio vemos que por lo general, las redes neuronales son mas estables frente
-    al aumento de dimensiones, es decir, son mas estables al complejizar los
+    En este ejercicio vemos que por lo general, las redes neuronales son más estables frente
+    al aumento de dimensiones, es decir, son más estables al complejizar los
     datos de entrada. A su vez, la generación de datos no tiene tanta
     implicancia a la hora de aumentar las dimensiones.
 
     Si bien con redes neuronales vemos un comportamiento de overfitting, no hay
     que perder de vista que estamos limitando la cantidad de neuronas en la capa
-    intermedia. Aun con esta restricción, las redes son mas estables que los
+    intermedia. Aun con esta restricción, las redes son más estables que los
     árboles frente al aumento de la dimensionalidad. Pareciese ser, que las redes
     neuronales tienen una mayor capacidad resolutiva que los árboles de decisión.
     """)
@@ -2600,7 +2600,7 @@ def _(ej6, plot_errors, plt):
         _e_test = ej6["nnss"][_k][_i]["e_test"]
 
         # Ploteamos los errores
-        _fig, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 20), squeeze=False)
+        _fig, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 5), squeeze=False)
 
         plot_errors(_ax[0, 0], _e_train,
                         _e_test, _e_val,
@@ -2634,6 +2634,11 @@ def _(ax_ej6):
 @app.cell
 def _(ax_ej6):
     ax_ej6[3]
+    return
+
+
+@app.cell(hide_code=True)
+def _():
     return
 
 
@@ -2678,12 +2683,12 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
         iter = 10
 
         # Parámetros
-        eta = 0.3             # eta := learning rate
-        alfa = 0.3             # alfa := momentum
-        sub_epocas = 50 #1       # numero de epocas que entrena cada vez
-        eval = 400 #50            # numero de veces que realizaremos sub-epocas
+        eta = 0.001             # eta := learning rate
+        alfa = 0.5             # alfa := momentum
+        sub_epocas = 20#50 #1       # numero de epocas que entrena cada vez
+        eval = 200#400 #50            # numero de veces que realizaremos sub-epocas
         # epocas ~= sub_epocas * super_epocas
-        N2 = 3     # neuronas en la capa oculta
+        N2 = 15#30     # neuronas en la capa oculta
         val_perc = 0.25         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
 
@@ -2701,7 +2706,6 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
 
             # Re-escalamos los datos
             X_test = scaler.transform(X)
-
 
 
             # Defino MLP para clasificación
@@ -2827,7 +2831,38 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Antes de entrenar las redes, nos parece oportuno explciar que es el tamaño de batch. El batch size es la cantidad de entradas del conjunto de entrenamiento que la red neuronal procesa (en forma conjunta) antes de calcular el error y actualizar los pesos.
+    Antes de entrenar las redes, nos parece oportuno explicar que es el tamaño de
+    batch. El batch size es la cantidad de entradas del conjunto de entrenamiento
+    que la red neuronal procesa (en forma conjunta) antes de calcular el error y
+    actualizar los pesos.
+
+    **Stochastic gradient decent**
+
+    Consiste en poner el tamaño de batch en uno. Cuando hacemos esto, forzamos
+    a que la red actualice los pesos por cada entrada consumida. Esto provoca
+    que nos acerquemos y alejemos de la solución en cada actualización, pues
+    ajustamos los pesos en relación al dato visto. Al hacer esto, tenemos
+    que la función de error con respecto a las épocas tiene muchos picos, subidas
+    y bajadas. Es un descenso del error "caótico".
+
+    **Batch gradient decent**
+
+    El tamaño del batch es el tamaño del dataset. La red espera a ver todos
+    los datos y luego en base a eso actualizar el error. Se tiene un descenso
+    del error controlado y directo al mínimo. El problema de hacer esto, es que
+    al tomar todos los datos para actualizar los pesos (calcular el gradiente)
+    es muy fácil caer y quedarse estancado en un mínimo local.
+
+
+    **Mini-Batch gradient decent**
+
+    Tal como indica el nombre, es un intermedio de las dos opciones anteriores.
+    Nos permite actualizar los pesos luego de ver una determinada cantidad
+    de datos del dataset. Al utilizar mini-batch obtenemos funciones de errores
+    con algunos picos, pero no tanto como la del stochastic. De esta manera,
+    descendemos al error mínimo de forma controlada pero con menos
+    probabilidad de quedar estancado en un mínimo local
+    (calculamos multiples gradientes antes de actualizar).
     """)
     return
 
@@ -2980,6 +3015,24 @@ def _(ej7, plot_errors, plt):
 
         _ax[0, 0].set_title(f"Errores  - Batch size: {round(ej7["batch_size"][_k])}")
         plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Podemos observar que a medida que aumentamos el tamaño del batch, las curvas
+    de error son más suaves (los picos son mas chicos). Lo que se corresponde
+    con el comportamiento esperado.
+
+    Por otro lado, cuando disminuimos el tamaño de batch la distancia entre
+    los errores de entrenamiento y test disminuye considerablemente a comparación
+    con un tamaño de batch grande. Esto puede deberse, a que las redes con menor
+    tamaño de batch realizan más actualizaciones del gradiente que aquellas
+    con tamaño de batch más grande, por lo que corrigen más veces los pesos.
+    Por esto mismo, opinamos que si las últimas dos redes se entrenasen con
+    más épocas, se observaría la misma convergencia que en la primer gráfica.
+    """)
     return
 
 
