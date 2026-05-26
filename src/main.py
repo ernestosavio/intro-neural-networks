@@ -1085,8 +1085,9 @@ def _(mo):
     mo.md(r"""
     En dicha tabla podemos observar que la mejor combinación de hiper-parámetros es la que tiene:
 
-        - learning rate = 0.25
-        - momentum = 0.5
+    - learning rate = 0.25
+
+    - momentum = 0.5
 
     ya que posee el menor error promedio de testeo (aproximadamente 6%).
 
@@ -1782,16 +1783,16 @@ def _(mo):
     return
 
 
-app._unparsable_cell(
-    r"""
+@app.cell()
+def _(plt, gammas, ej4, plot_penalization):
     # GRÁFICA DE LA PENALIZACIÓN
-    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 10, squeeze=False)
+    _, _ax = plt.subplots(len(gammas), 1, sharey=True, figsize=(20, 10), squeeze=False)
 
     _cont = 0
 
     for _i in gammas:
         # Lista de los errores totales mínimos de cada época
-        min_errors = []
+        _min_errors = []
 
         # Nos quedamos con la mejor red para el parámetro 'best_gamma'
         for _j in range(len(ej4["nnss"][_i])):
@@ -1808,30 +1809,29 @@ app._unparsable_cell(
             _gamma = ej4["gamma"][_i]
 
             # Calculamos el error total mínimo de entre todas las épocas
-            min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
+            _min_errors.append(min(calc_total_errors(_e_train, _norm_weights, _gamma, _ord)))
 
         # Obtenemos el índice
-        _k = min_errors.index(min(min_errors))
+        _k = _min_errors.index(min(_min_errors))
 
         # Nos quedamos con la red asociada a ese valor, y la ploteamos
         _nn = ej4["nnss"][_i][_k]
 
         plot_penalization(_ax[_cont,0], _nn["norm_weight"], ej4["super_epocas"][_i], ej4["sub_epocas"][_i])
 
-        _ax[_cont, 0].set_title(f"Penalización - Gamma: {ej4["gamma"][_i]} ")
+        _ax[_cont, 0].set_title(f"Penalización - Gamma: {ej4["gamma"][_i]}")
         _cont += 1
 
     plt.tight_layout()
     plt.show()
-    """,
-    name="_"
-)
+
+    return 
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Nuevamente, estas gráficas parecen coincidir con nuestro análisis hecho al inicio del ejercicio. Observamos que el valor más grande de $\gamma$ tiene una mayor penzalización que el valor más pequeño de $\gamma$.
+    Nuevamente, estas gráficas parecen coincidir con nuestro análisis hecho al inicio del ejercicio. Observamos que el valor más grande de $\\\\gamma$ tiene una mayor penzalización que el valor más pequeño de $\\\\gamma$.
     """)
     return
 
@@ -2091,14 +2091,14 @@ def _(calc_total_errors, ej5_paral, np, pd):
 def _(calc_total_errors, ej5_diag, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej5 = {
-                       "d" : [],
-                       "learning_rate" : [],
-                       "momentum" : [],
-                       "gamma" : [],
-                       "ord" : [],
-                       "super_epocas" : [],
-                       "sub_epocas" : [],
-                       "avg_e_test": [],
+                       "Dimensión" : [],
+                       "Learning rate" : [],
+                       "Momentum" : [],
+                       "Gamma" : [],
+                       "Orden de la norma" : [],
+                       "Super épocas" : [],
+                       "Sub épocas" : [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej5_diag["nnss"])):
@@ -2112,23 +2112,22 @@ def _(calc_total_errors, ej5_diag, np, pd):
             _k = _total_errors.index(_min_total_err)
             _errs_test.append(ej5_diag["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
-
-        _aux_table_ej5["d"].append(ej5_diag["d"][_i])
-        _aux_table_ej5["learning_rate"].append(ej5_diag["learning_rate"][_i])
-        _aux_table_ej5["momentum"].append(ej5_diag["momentum"][_i])
-        _aux_table_ej5["gamma"].append(ej5_diag["gamma"][_i])
-        _aux_table_ej5["ord"].append(ej5_diag["ord"][_i])
-        _aux_table_ej5["super_epocas"].append(ej5_diag["super_epocas"][_i])
-        _aux_table_ej5["sub_epocas"].append(ej5_diag["sub_epocas"][_i])
+        _aux_table_ej5["Error de testeo promedio"].append(np.mean(_errs_test))
+        _aux_table_ej5["Dimensión"].append(ej5_diag["d"][_i])
+        _aux_table_ej5["Learning rate"].append(ej5_diag["learning_rate"][_i])
+        _aux_table_ej5["Momentum"].append(ej5_diag["momentum"][_i])
+        _aux_table_ej5["Gamma"].append(ej5_diag["gamma"][_i])
+        _aux_table_ej5["Orden de la norma"].append(ej5_diag["ord"][_i])
+        _aux_table_ej5["Super épocas"].append(ej5_diag["super_epocas"][_i])
+        _aux_table_ej5["Sub épocas"].append(ej5_diag["sub_epocas"][_i])
 
     table_ej5_diag = pd.DataFrame(_aux_table_ej5)
     table_ej5_diag
     return
 
 
-@app.cell
-def _(calc_total_errors, dimensions_ej5, ej5_paral, plot_errors_wd, plt):
+app._unparsable_cell(
+    r"""
     # GRÁFICA DE LOS ERRORES PARALELAS
     _, _ax = plt.subplots(len(dimensions_ej5), 1, sharey=True, figsize=(20, 40), squeeze=False)
 
@@ -2169,6 +2168,9 @@ def _(calc_total_errors, dimensions_ej5, ej5_paral, plot_errors_wd, plt):
 
     plt.show()
     return
+    """,
+    name="_"
+)
 
 
 @app.cell
@@ -2613,6 +2615,165 @@ def _(mo):
     mo.md(r"""
     # (OPCIONAL) Ejercicio 7. Minibatch.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Antes de entrenar las redes, nos parece oportuno explciar que es el tamaño de batch. El batch size es la cantidad de entradas del conjunto de entrenamiento que la red neuronal procesa (en forma conjunta) antes de calcular el error y actualizar los pesos.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamos las redes
+    """)
+    return
+
+
+@app.cell
+def _(cargar_csv, skl):
+    def cargar_datos_ej7(val_per):
+        # Cargamos los datos
+        X, y = cargar_csv('./data/ssp.data', 12)
+
+        # Spliteamos el training y validacion
+        X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X, y, test_size=val_per)
+        return X_train, X_val, y_train, y_val
+
+    return (cargar_datos_ej7,)
+
+
+@app.cell
+def _(MLPRegressor, cargar_csv, cargar_datos_ej7, entrenar_red_rgr):
+    def res_ej7(batch_size):
+        iter = 10
+
+        # Parámetros
+        eta = 0.05             # eta := learning rate
+        alfa = 0.3             # alfa := momentum
+        sub_epocas = 200       # numero de epocas que entrena cada vez
+        eval = 2000            # numero de veces que realizaremos sub-epocas
+        # epocas ~= sub_epocas * super_epocas
+        N2 = 30     # neuronas en la capa oculta
+        val_perc = 0.2         # porcentaje de validación
+        train_perc = round(1 - val_perc,2) # porcentaje de validación
+
+        # Cargamos los datos de test
+        X_test, y_test = cargar_csv('./data/ssp.test', 12)
+
+
+        nns = []
+
+        for i in range(iter):
+            # Cargamos los datos de entrenamiento y validación
+            X_train, X_val, y_train, y_val = cargar_datos_ej7(val_perc)
+
+
+            # Defino MLP para regresión
+            regr = MLPRegressor(
+                hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
+                batch_size=batch_size, learning_rate='constant', learning_rate_init=eta,
+                momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
+                max_iter=sub_epocas
+            )
+
+            # Corremos el entrenamiento
+            regr, e_train, e_val, e_test = entrenar_red_rgr(regr, eval, X_train, y_train, X_val, y_val, X_test, y_test)
+
+            # Guardamos el resultado
+            nns.append( {"regr"    : regr,
+                         "e_train"   : e_train,
+                         "e_val"     : e_val,
+                         "e_test"    : e_test})
+
+        return { 
+                 "nns" : nns,
+                 "batch_size": batch_size,
+                 "super_epocas" : eval,
+                 "sub_epocas" : sub_epocas
+               }
+
+    return (res_ej7,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Entrenamos la red con distintos tamaños de batchs.
+    """)
+    return
+
+
+@app.cell
+def _(Parallel, delayed, joblib, os, res_ej7):
+    _archivo_cache = "resultados_ej7.pkl"
+
+    # Notemos que un batch_size x, hace que halla: size_training_dataset/batch_size actualizaciones del gradiente. Por lo tanto:
+    #
+    # batch_size = 20 --> (180*0.8)/20 = 7.2 actualizaciones del gradiente
+    # batch_size = 30 --> (180*0.8)/30 = 4.8 actualizaciones del gradiente
+    ej7_cases = [1,20,30]
+
+    if os.path.exists(_archivo_cache):
+        ej7 = joblib.load(_archivo_cache)
+    else:
+        ej7 = { 
+                "nnss": [],
+                "batch_size": [],
+                "super_epocas": [],
+                "sub_epocas": []
+              }
+
+        # 1. Ejecutamos todos los casos en paralelo
+        _resultados_paralelos = Parallel(n_jobs=-1)(
+            delayed(res_ej7)(_c) for _c in ej7_cases
+        )
+
+        for _res in _resultados_paralelos:
+            ej7["nnss"].append(_res["nns"])
+            ej7["batch_size"].append(_res["batch_size"])
+            ej7["super_epocas"].append(_res["super_epocas"])
+            ej7["sub_epocas"].append(_res["sub_epocas"])
+
+        joblib.dump(ej7, _archivo_cache)
+    return (ej7,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Plotamos un gráfico para cada caso
+    """)
+    return
+
+
+@app.cell
+def _(ej7, plot_errors, plt):
+    for _k in range(len(ej7["nnss"])):
+        _find_min_val = []
+
+        for _j in range(len(ej7["nnss"][_k])):
+            _find_min_val.append(min(ej7["nnss"][_k][_j]["e_val"]))
+
+        _i = _find_min_val.index(min(_find_min_val))
+
+        _e_train = ej7["nnss"][_k][_i]["e_train"]
+        _e_val = ej7["nnss"][_k][_i]["e_val"]
+        _e_test = ej7["nnss"][_k][_i]["e_test"]
+
+        # Ploteamos los errores
+        _, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 5), squeeze=False)
+
+        plot_errors(_ax[0, 0], _e_train,
+                        _e_test, _e_val,
+                        ej7["super_epocas"][_k], ej7["sub_epocas"][_k])
+
+        _ax[0, 0].set_title(f"Errores  - Batch size: {round(ej7["batch_size"][_k])}")
+        plt.show()
     return
 
 
