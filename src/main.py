@@ -2047,14 +2047,14 @@ def _(mo):
 def _(calc_total_errors, ej5_paral, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej5 = {
-                       "d" : [],
-                       "learning_rate" : [],
-                       "momentum" : [],
-                       "gamma" : [],
-                       "ord" : [],
-                       "super_epocas" : [],
-                       "sub_epocas" : [],
-                       "avg_e_test": [],
+                       "Dimensión" : [],
+                       "Learning rate" : [],
+                       "Momentum" : [],
+                       "Gamma" : [],
+                       "Orden de la norma" : [],
+                       "Super épocas" : [],
+                       "Sub épocas" : [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej5_paral["nnss"])):
@@ -2068,15 +2068,14 @@ def _(calc_total_errors, ej5_paral, np, pd):
             _k = _total_errors.index(_min_total_err)
             _errs_test.append(ej5_paral["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
-
-        _aux_table_ej5["d"].append(ej5_paral["d"][_i])
-        _aux_table_ej5["learning_rate"].append(ej5_paral["learning_rate"][_i])
-        _aux_table_ej5["momentum"].append(ej5_paral["momentum"][_i])
-        _aux_table_ej5["gamma"].append(ej5_paral["gamma"][_i])
-        _aux_table_ej5["ord"].append(ej5_paral["ord"][_i])
-        _aux_table_ej5["super_epocas"].append(ej5_paral["super_epocas"][_i])
-        _aux_table_ej5["sub_epocas"].append(ej5_paral["sub_epocas"][_i])
+        _aux_table_ej5["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
+        _aux_table_ej5["Dimensión"].append(ej5_paral["d"][_i])
+        _aux_table_ej5["Learning rate"].append(ej5_paral["learning_rate"][_i])
+        _aux_table_ej5["Momentum"].append(ej5_paral["momentum"][_i])
+        _aux_table_ej5["Gamma"].append(ej5_paral["gamma"][_i])
+        _aux_table_ej5["Orden de la norma"].append(ej5_paral["ord"][_i])
+        _aux_table_ej5["Super épocas"].append(ej5_paral["super_epocas"][_i])
+        _aux_table_ej5["Sub épocas"].append(ej5_paral["sub_epocas"][_i])
 
     table_ej5_paral = pd.DataFrame(_aux_table_ej5)
     table_ej5_paral
@@ -2108,7 +2107,7 @@ def _(calc_total_errors, ej5_diag, np, pd):
             _k = _total_errors.index(_min_total_err)
             _errs_test.append(ej5_diag["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej5["Error de testeo promedio"].append(np.mean(_errs_test))
+        _aux_table_ej5["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
         _aux_table_ej5["Dimensión"].append(ej5_diag["d"][_i])
         _aux_table_ej5["Learning rate"].append(ej5_diag["learning_rate"][_i])
         _aux_table_ej5["Momentum"].append(ej5_diag["momentum"][_i])
@@ -2229,8 +2228,14 @@ def _(calc_total_errors, dimensions_ej5, ej5_diag, plot_errors_wd, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Análisis de las gráficas
+    ## Análisis de las gráficas paralelas vs diagonales
+    """)
+    return
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Antes de analizar las gráficas recordemos como afecta la
     cantidad de neuronas en la capa intermedia al poder resolutivo de nuestra red.
     Un mayor numero de neuronas, permite que la red represente y resuelva
@@ -2407,7 +2412,14 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusiones Árboles vs Redes Neuronales
+    ### Conclusiones Árboles vs Redes Neuronales
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Enfoquémonos primero en los resultados de usar paralelas. Con esta generación
     de datos podemos ver como las redes neuronales sobre-ajustan los datos de
     entrenamiento en mayor medida que los árboles de decisión, llevando el error
@@ -2449,9 +2461,11 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Entrenamos las redes
+    """)
     return
 
 
@@ -2553,9 +2567,11 @@ def _(Parallel, delayed, joblib, os, res_ej6):
     return (ej6,)
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Ploteamos la tabla y los errores
+    """)
     return
 
 
@@ -2563,12 +2579,12 @@ def _():
 def _(ej6, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej6 = {
-                       "neurons" : [],
-                       "learning_rate" : [],
-                       "momentum" : [],
-                       "train_perc" : [],
-                       "val_perc" : [],
-                       "avg_e_test": [],
+                       "N° neuronas" : [],
+                       "Learning rate" : [],
+                       "Momentum" : [],
+                       "Porcentaje entrenamiento" : [],
+                       "Porcentaje testeo" : [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej6["nnss"])):
@@ -2578,13 +2594,12 @@ def _(ej6, np, pd):
             _k = ej6["nnss"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej6["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej6["avg_e_test"].append(np.mean(_errs_test))
-
-        _aux_table_ej6["neurons"].append(ej6["neurons"][_i])
-        _aux_table_ej6["learning_rate"].append(ej6["learning_rate"][_i])
-        _aux_table_ej6["momentum"].append(ej6["momentum"][_i])
-        _aux_table_ej6["val_perc"].append(ej6["val_perc"][_i])
-        _aux_table_ej6["train_perc"].append(ej6["train_perc"][_i])
+        _aux_table_ej6["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
+        _aux_table_ej6["N° neuronas"].append(ej6["neurons"][_i])
+        _aux_table_ej6["Learning rate"].append(ej6["learning_rate"][_i])
+        _aux_table_ej6["Momentum"].append(ej6["momentum"][_i])
+        _aux_table_ej6["Porcentaje testeo"].append(ej6["val_perc"][_i])
+        _aux_table_ej6["Porcentaje entrenamiento"].append(ej6["train_perc"][_i])
 
     table_ej6 = pd.DataFrame(_aux_table_ej6)
     table_ej6
