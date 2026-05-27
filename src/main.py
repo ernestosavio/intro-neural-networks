@@ -77,7 +77,7 @@ def _():
     """
     sub_epocas = 25   # numero de epocas que entrena cada vez
     super_epocas = 100 # numero de veces que realizaremos sub-epocas
-    # epocas ~= sub_epocas * super_epocas
+    # épocas ~= sub_epocas * super_epocas
     eta = 0.01        # learning rate
     alfa = 0.9        # momentum
     N2 = 60            # neuronas en la capa oculta
@@ -775,9 +775,9 @@ def _(MLPClassifier, entrenar_red, np, skl, spiral):
         X_train, X_val, y_train, y_val = skl.model_selection.train_test_split(X2, y2, test_size=0.20)
 
         # Parámetros 1
-        sub_epocas = 20          # numero de epocas que entrena cada vez
-        eval = 1000              # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
+        sub_epocas = 20          # número de épocas que entrena cada vez
+        eval = 1000              # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
         eta = 0.1                # learning rate
         alfa = 0.9               # momentum
         N2 = [2, 10, 20, 40]     # neuronas en la capa oculta
@@ -857,28 +857,23 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    En las gráficas podemos ver que mientras incrementamos el numero de
+    En las gráficas podemos ver que mientras incrementamos el número de
     neuronas en la hidden layer obtenemos una mejor clasificación. Esto se
     debe, a que cuando combinamos sigmoids (las de la capa intermedia en el
-    perceptron final) podemos aproximamos de mejor manera, es decir,
+    perceptron final) podemos aproximar de mejor manera, es decir,
     obtenemos una mejor clasificación.
 
     Sin embargo, agregar neuronas en la capa intermedia puede provocar
     overfitting, ya que la red neuronal aprende ruido de los datos de
     entrenamiento. Pareciera no ser el caso de este ejercicio.
 
-    Comparando con la clasificación hecha con arboles de decision vemos que,
+    Comparando con la clasificación hecha con árboles de decisión vemos que,
     a pesar del tiempo de entrenamiento de las redes neuronales (que es
-    mayor) se obtiene una peor clasificación. De esta manera, podemos decir
-    que las redes neuronales son más costosas que los arboles de decision.
+    mayor) se obtiene una peor clasificación.
 
-    En nuestra opinion, la razón de la superioridad de arboles en la
-    clasificación viene de que los arboles de decision son un método de
-    aprendizaje para problemas discretos, en particular, clasificación.
-    Por otro lado, la función MLPClassifier utiliza regresión y *softmax*
-    para clasificar (herramientas para transformar un problema continuo
-    en uno discreto), creemos que esta conversion lleva a una peor
-    clasificación.
+    Vemos entonces, que las redes neuronales no son la solución óptima para
+    todos los problemas. En este ejercicio, podemos ver como los árboles
+    clasifican los datos de mejor manera y en un menor tiempo que ellas.
     """)
     return
 
@@ -948,8 +943,8 @@ def _(MLPClassifier, cargar_datos_ej2, entrenar_red):
 
         # Parámetros 1
         # eta := learning rate | alfa := momentum
-        sub_epocas = 50          # numero de epocas que entrena cada vez
-        eval = 300              # numero de veces que realizaremos sub-epocas
+        sub_epocas = 50          # número de épocas que entrena cada vez
+        eval = 300              # número de veces que realizaremos sub-epocas
         # epocas ~= sub_epocas * super_epocas
         N2 = 6     # neuronas en la capa oculta
 
@@ -1225,9 +1220,9 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej3, entrenar_red_rgr, skl):
         # Parámetros
         eta = 0.01             # eta := learning rate
         alfa = 0.9             # alfa := momentum
-        sub_epocas = 50        # numero de epocas que entrena cada vez
-        eval = 400             # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
+        sub_epocas = 50        # número de épocas que entrena cada vez
+        eval = 400             # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
         N2 = 30     # neuronas en la capa oculta
 
         # Cargamos los datos de test
@@ -1871,10 +1866,10 @@ def _(MLPClassifier, diagonales, entrenar_red_wd_clasf, np, paralelas):
         # eta := learning rate
         # alfa := momentum
         # gamma := weight decay parameter
-        # ord := normalizacion utilizada en los pesos
-        # numero de epocas que entrena cada vez
-        # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
+        # ord := normalización utilizada en los pesos
+        # número de épocas que entrena cada vez
+        # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
         # gen := Generador de datos gen="diag" para diagonales (default paralelas)
 
 
@@ -2323,14 +2318,14 @@ def _(calc_total_errors, dimensions_ej5):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Traemos el codigo de arboles explicitamente
+    ## Traemos el código de árboles explícitamente
     """)
     return
 
 
 @app.cell
 def _():
-    # Importamos el codigo general de arboles de desicion
+    # Importamos el código general de árboles de decisión
     import desicion_tree as dt
 
     return (dt,)
@@ -2455,6 +2450,12 @@ def _(mo):
 
 
 @app.cell
+def _():
+    ## Entrenamos las redes
+    return
+
+
+@app.cell
 def _(MLPClassifier, entrenar_red, load_iris, skl):
     def res_ej6(N2, eta, alfa, super_epocas, sub_epocas, val_perc):
         iter = 10
@@ -2462,9 +2463,9 @@ def _(MLPClassifier, entrenar_red, load_iris, skl):
         # Parámetros:
         # eta := learning rate
         # alfa := momentum
-        # numero de epocas que entrena cada vez
-        # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
+        # número de épocas que entrena cada vez
+        # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
         # neuronas en la capa oculta
 
         # Cargamos los datos de test
@@ -2513,10 +2514,11 @@ def _(MLPClassifier, entrenar_red, load_iris, skl):
 
 @app.cell
 def _(Parallel, delayed, joblib, os, res_ej6):
-    _archivo_cache = "resultados_ej6.pkl"
+    _archivo_cache = "resultados_ej6_a.pkl"
 
-    ej6_cases = [(30, 0.01, 0.9, 400, 50, 0.5), (30, 0.01, 0.9, 400, 50, 0.25),
-                 (30, 0.01, 0.9, 2000, 50, 0.25), (6, 0.05, 0.3, 4000, 20, 0.25)]
+    ej6_cases = [(30, 0.01, 0.9, 400, 50, 0.25), 
+                 (15, 0.001, 0.5, 400, 50, 0.25),
+                 (30, 0.25, 0.5, 400, 50, 0.25)]
 
     if os.path.exists(_archivo_cache):
         ej6 = joblib.load(_archivo_cache)
@@ -2549,6 +2551,12 @@ def _(Parallel, delayed, joblib, os, res_ej6):
 
         joblib.dump(ej6, _archivo_cache)
     return (ej6,)
+
+
+@app.cell
+def _():
+    ## Ploteamos la tabla y los errores
+    return
 
 
 @app.cell
@@ -2585,7 +2593,8 @@ def _(ej6, np, pd):
 
 @app.cell
 def _(ej6, plot_errors, plt):
-    ax_ej6 = []
+    _fig, _ax = plt.subplots(len(ej6["nnss"]), ncols=1, sharex=False, sharey=True, 
+                            figsize=(10, 10), squeeze=False)
 
     for _k in range(len(ej6["nnss"])):
         _find_min_val = []
@@ -2599,46 +2608,37 @@ def _(ej6, plot_errors, plt):
         _e_val = ej6["nnss"][_k][_i]["e_val"]
         _e_test = ej6["nnss"][_k][_i]["e_test"]
 
-        # Ploteamos los errores
-        _fig, _ax = plt.subplots(1, 1, sharey=True, figsize=(20, 5), squeeze=False)
-
-        plot_errors(_ax[0, 0], _e_train,
+        plot_errors(_ax[_k, 0], _e_train,
                         _e_test, _e_val,
                         ej6["super_epocas"][_k], ej6["sub_epocas"][_k])
 
-        _ax[0, 0].set_title(f"Errores - Neurons: {ej6["neurons"][_k]} - Learning Rate: {ej6["learning_rate"][_k]} - Momentum: {ej6["momentum"][_k]} - Validacion: {ej6["val_perc"][_k]}")
+        _ax[_k, 0].set_title(f"Errores - Neurons: {ej6["neurons"][_k]} - Learning Rate: {ej6["learning_rate"][_k]} - Momentum: {ej6["momentum"][_k]} - Validacion: {ej6["val_perc"][_k]}")
 
-        ax_ej6.append(_fig)
-        plt.close(_fig)
-    return (ax_ej6,)
+    plt.tight_layout()
 
-
-@app.cell
-def _(ax_ej6):
-    ax_ej6[0]
-    return
-
-
-@app.cell
-def _(ax_ej6):
-    ax_ej6[1]
-    return
-
-
-@app.cell
-def _(ax_ej6):
-    ax_ej6[2]
-    return
-
-
-@app.cell
-def _(ax_ej6):
-    ax_ej6[3]
+    _fig
     return
 
 
 @app.cell(hide_code=True)
-def _():
+def _(mo):
+    mo.md(r"""
+    Luego de ver las gráficas, concluimos que los mejores hiper-parámetros
+    entre los propuestos son:
+    - Neuronas: 30
+    - Learning rate: 0.01
+    - Momentum: 0.9
+    - Porcentaje de validación: 0.25
+    - Super épocas: 400
+    - Sub épocas: 50
+
+    Ya que presentan el mejor error promedió en los datos de test, sin
+    presentar overfitting.
+
+    En este ejercicio, pudimos ver como, con los mismos hiper-parámetros
+    obtuvimos curvas de aprendizajes muy distintas (aunque los errores promedios se mantenían).
+    Nosotros creemos que esto se debe principalmente, a que cada red inicializa los pesos de manera random.
+    """)
     return
 
 
@@ -2647,6 +2647,12 @@ def _(mo):
     mo.md(r"""
     ## B)
     """)
+    return
+
+
+@app.cell
+def _():
+    ## Entrenamos las redes
     return
 
 
@@ -2683,12 +2689,12 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
         iter = 10
 
         # Parámetros
-        eta = 0.001             # eta := learning rate
+        eta = 0.01             # eta := learning rate
         alfa = 0.5             # alfa := momentum
-        sub_epocas = 20#50 #1       # numero de epocas que entrena cada vez
-        eval = 200#400 #50            # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
-        N2 = 15#30     # neuronas en la capa oculta
+        sub_epocas = 50       # número de épocas que entrena cada vez
+        eval = 400             # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
+        N2 = 30    # neuronas en la capa oculta
         val_perc = 0.25         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
 
@@ -2715,15 +2721,6 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
                 momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
                 max_iter=sub_epocas
             )
-
-            # if not hasattr(classf, 'coefs_'):
-    # Le pasamos todos los datos (X_train entero) para que inicialice la 
-    # arquitectura sin quejarse de que le faltan clases.
-    # Esto hace 1 sola mini-época de inicialización.
-                # classf.partial_fit(X_train, y_train, classes=np.unique(y_train))
-
-                # Sobrescribimos la matriz de Entrada->Oculta con ceros absolutos
-                # classf.coefs_[0] = np.zeros_like(classf.coefs_[0])# Corremos el entrenamiento
 
             classf, e_train, e_val, e_test = entrenar_red(classf, eval, X_train, y_train, X_val, y_val, X_test, y_test)
 
@@ -2780,6 +2777,12 @@ def _(joblib, os, res_ej6_b):
 
         joblib.dump(ej6_b, _archivo_cache)
     return (ej6_b,)
+
+
+@app.cell
+def _():
+    ## Ploteamos la tabla y los errores
+    return
 
 
 @app.cell
@@ -2896,9 +2899,9 @@ def _(MLPRegressor, cargar_csv, cargar_datos_ej7, entrenar_red_rgr):
         # Parámetros
         eta = 0.05             # eta := learning rate
         alfa = 0.3             # alfa := momentum
-        sub_epocas = 200       # numero de epocas que entrena cada vez
-        eval = 2000            # numero de veces que realizaremos sub-epocas
-        # epocas ~= sub_epocas * super_epocas
+        sub_epocas = 200       # número de épocas que entrena cada vez
+        eval = 2000            # número de veces que realizaremos sub-epocas
+        # épocas ~= sub_epocas * super_epocas
         N2 = 30     # neuronas en la capa oculta
         val_perc = 0.2         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
@@ -3022,7 +3025,7 @@ def _(ej7, plot_errors, plt):
 def _(mo):
     mo.md(r"""
     Podemos observar que a medida que aumentamos el tamaño del batch, las curvas
-    de error son más suaves (los picos son mas chicos). Lo que se corresponde
+    de error son más suaves (los picos son más chicos). Lo que se corresponde
     con el comportamiento esperado.
 
     Por otro lado, cuando disminuimos el tamaño de batch la distancia entre
