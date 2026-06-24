@@ -2689,12 +2689,12 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
         iter = 10
 
         # Parámetros
-        eta = 0.01             # eta := learning rate
-        alfa = 0.5             # alfa := momentum
+        eta = 0.3             # eta := learning rate
+        alfa = 0.3             # alfa := momentum
         sub_epocas = 50       # número de épocas que entrena cada vez
-        eval = 400             # número de veces que realizaremos sub-epocas
+        eval = 200             # número de veces que realizaremos sub-epocas
         # épocas ~= sub_epocas * super_epocas
-        N2 = 30    # neuronas en la capa oculta
+        N2 = 3    # neuronas en la capa oculta
         val_perc = 0.25         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
 
@@ -2717,7 +2717,7 @@ def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
             # Defino MLP para clasificación
             classf = MLPClassifier(
                 hidden_layer_sizes=(N2,), activation='logistic', solver='sgd', alpha=0.0,
-                batch_size=1, learning_rate='constant', learning_rate_init=eta,
+                batch_size=len(X_train), learning_rate='constant', learning_rate_init=eta,
                 momentum=alfa, nesterovs_momentum=False, tol=0.0, warm_start=True,
                 max_iter=sub_epocas
             )
