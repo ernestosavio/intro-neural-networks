@@ -2047,14 +2047,14 @@ def _(mo):
 def _(calc_total_errors, ej5_paral, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej5 = {
-                       "d" : [],
-                       "learning_rate" : [],
-                       "momentum" : [],
-                       "gamma" : [],
-                       "ord" : [],
-                       "super_epocas" : [],
-                       "sub_epocas" : [],
-                       "avg_e_test": [],
+                       "Dimensión" : [],
+                       "Learning rate" : [],
+                       "Momentum" : [],
+                       "Gamma" : [],
+                       "Orden de la norma" : [],
+                       "Super épocas" : [],
+                       "Sub épocas" : [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej5_paral["nnss"])):
@@ -2068,15 +2068,14 @@ def _(calc_total_errors, ej5_paral, np, pd):
             _k = _total_errors.index(_min_total_err)
             _errs_test.append(ej5_paral["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej5["avg_e_test"].append(np.mean(_errs_test))
-
-        _aux_table_ej5["d"].append(ej5_paral["d"][_i])
-        _aux_table_ej5["learning_rate"].append(ej5_paral["learning_rate"][_i])
-        _aux_table_ej5["momentum"].append(ej5_paral["momentum"][_i])
-        _aux_table_ej5["gamma"].append(ej5_paral["gamma"][_i])
-        _aux_table_ej5["ord"].append(ej5_paral["ord"][_i])
-        _aux_table_ej5["super_epocas"].append(ej5_paral["super_epocas"][_i])
-        _aux_table_ej5["sub_epocas"].append(ej5_paral["sub_epocas"][_i])
+        _aux_table_ej5["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
+        _aux_table_ej5["Dimensión"].append(ej5_paral["d"][_i])
+        _aux_table_ej5["Learning rate"].append(ej5_paral["learning_rate"][_i])
+        _aux_table_ej5["Momentum"].append(ej5_paral["momentum"][_i])
+        _aux_table_ej5["Gamma"].append(ej5_paral["gamma"][_i])
+        _aux_table_ej5["Orden de la norma"].append(ej5_paral["ord"][_i])
+        _aux_table_ej5["Super épocas"].append(ej5_paral["super_epocas"][_i])
+        _aux_table_ej5["Sub épocas"].append(ej5_paral["sub_epocas"][_i])
 
     table_ej5_paral = pd.DataFrame(_aux_table_ej5)
     table_ej5_paral
@@ -2108,7 +2107,7 @@ def _(calc_total_errors, ej5_diag, np, pd):
             _k = _total_errors.index(_min_total_err)
             _errs_test.append(ej5_diag["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej5["Error de testeo promedio"].append(np.mean(_errs_test))
+        _aux_table_ej5["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
         _aux_table_ej5["Dimensión"].append(ej5_diag["d"][_i])
         _aux_table_ej5["Learning rate"].append(ej5_diag["learning_rate"][_i])
         _aux_table_ej5["Momentum"].append(ej5_diag["momentum"][_i])
@@ -2229,8 +2228,14 @@ def _(calc_total_errors, dimensions_ej5, ej5_diag, plot_errors_wd, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Análisis de las gráficas
+    ## Análisis de las gráficas paralelas vs diagonales
+    """)
+    return
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Antes de analizar las gráficas recordemos como afecta la
     cantidad de neuronas en la capa intermedia al poder resolutivo de nuestra red.
     Un mayor numero de neuronas, permite que la red represente y resuelva
@@ -2407,7 +2412,14 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Conclusiones Árboles vs Redes Neuronales
+    ### Conclusiones Árboles vs Redes Neuronales
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Enfoquémonos primero en los resultados de usar paralelas. Con esta generación
     de datos podemos ver como las redes neuronales sobre-ajustan los datos de
     entrenamiento en mayor medida que los árboles de decisión, llevando el error
@@ -2449,9 +2461,11 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Entrenamos las redes
+    """)
     return
 
 
@@ -2553,9 +2567,11 @@ def _(Parallel, delayed, joblib, os, res_ej6):
     return (ej6,)
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Ploteamos la tabla y los errores
+    """)
     return
 
 
@@ -2563,12 +2579,12 @@ def _():
 def _(ej6, np, pd):
     # Creamos y mostramos la tabla para encontrar la mejor red
     _aux_table_ej6 = {
-                       "neurons" : [],
-                       "learning_rate" : [],
-                       "momentum" : [],
-                       "train_perc" : [],
-                       "val_perc" : [],
-                       "avg_e_test": [],
+                       "N° neuronas" : [],
+                       "Learning rate" : [],
+                       "Momentum" : [],
+                       "Porcentaje entrenamiento" : [],
+                       "Porcentaje testeo" : [],
+                       "Error de testeo promedio": [],
                      }
 
     for _i in range(len(ej6["nnss"])):
@@ -2578,13 +2594,12 @@ def _(ej6, np, pd):
             _k = ej6["nnss"][_i][_j]["e_val"].index(_min_e_val)
             _errs_test.append(ej6["nnss"][_i][_j]["e_test"][_k])
 
-        _aux_table_ej6["avg_e_test"].append(np.mean(_errs_test))
-
-        _aux_table_ej6["neurons"].append(ej6["neurons"][_i])
-        _aux_table_ej6["learning_rate"].append(ej6["learning_rate"][_i])
-        _aux_table_ej6["momentum"].append(ej6["momentum"][_i])
-        _aux_table_ej6["val_perc"].append(ej6["val_perc"][_i])
-        _aux_table_ej6["train_perc"].append(ej6["train_perc"][_i])
+        _aux_table_ej6["Error de testeo promedio"].append(round(np.mean(_errs_test),5))
+        _aux_table_ej6["N° neuronas"].append(ej6["neurons"][_i])
+        _aux_table_ej6["Learning rate"].append(ej6["learning_rate"][_i])
+        _aux_table_ej6["Momentum"].append(ej6["momentum"][_i])
+        _aux_table_ej6["Porcentaje testeo"].append(ej6["val_perc"][_i])
+        _aux_table_ej6["Porcentaje entrenamiento"].append(ej6["train_perc"][_i])
 
     table_ej6 = pd.DataFrame(_aux_table_ej6)
     table_ej6
@@ -2650,9 +2665,11 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    ## Entrenamos las redes
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Entrenamos las redes
+    """)
     return
 
 
@@ -2677,24 +2694,15 @@ def _(cargar_csv, skl):
 @app.cell
 def _(MLPClassifier, MinMaxScaler, cargar_csv, cargar_datos_ej6, entrenar_red):
     def res_ej6_b():
-        # neurons: 3 esta bien (a lo sumo 30, solo ganamos 1%-2
-        # learning rate: 0.3
-        # momentum: 0.3
-        # Full gradient descent was used in all  these experiments
-        # Network weights in the output units were initial-  ized to small random values. However, input unit weights were initialized to zero,  because this yields much more intelligible visualizations of the learned weights  
-        # Provided cross-validation methods are used to determine how many gradient descent  iterations should be performed
-        # sub epocas: 50
-        # super epocas: 1 ? 
-
         iter = 10
 
         # Parámetros
-        eta = 0.3             # eta := learning rate
-        alfa = 0.3             # alfa := momentum
-        sub_epocas = 50       # número de épocas que entrena cada vez
+        eta = 0.001            # eta := learning rate
+        alfa = 0.5             # alfa := momentum
+        sub_epocas = 20       # número de épocas que entrena cada vez
         eval = 200             # número de veces que realizaremos sub-epocas
         # épocas ~= sub_epocas * super_epocas
-        N2 = 3    # neuronas en la capa oculta
+        N2 = 15    # neuronas en la capa oculta
         val_perc = 0.25         # porcentaje de validación
         train_perc = round(1 - val_perc,2) # porcentaje de validación
 
@@ -2779,9 +2787,11 @@ def _(joblib, os, res_ej6_b):
     return (ej6_b,)
 
 
-@app.cell
-def _():
-    ## Ploteamos la tabla y los errores
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Ploteamos la tabla y los errores
+    """)
     return
 
 
@@ -2790,13 +2800,8 @@ def _(ej6_b, plot_errors, plt):
     _k = 0
     _find_min_val = []
 
-    # print(ej6_b["super_epocas"][_k])
-    # print(ej6_b["sub_epocas"][_k])
-
     for _j in range(len(ej6_b["nnss"][_k])):
         _find_min_val.append(min(ej6_b["nnss"][_k][_j]["e_val"]))
-
-    # print(_find_min_val)
 
     _i = _find_min_val.index(min(_find_min_val))
 
@@ -2804,9 +2809,6 @@ def _(ej6_b, plot_errors, plt):
     _e_val = ej6_b["nnss"][_k][_i]["e_val"]
     _e_test = ej6_b["nnss"][_k][_i]["e_test"]
 
-    # print(_e_train)
-    # print(_e_val)
-    # print(_e_test)
 
     # Ploteamos los errores
     _, _ax = plt.subplots(1, 1, sharey=True, figsize=(25, 10), squeeze=False)
@@ -2817,9 +2819,37 @@ def _(ej6_b, plot_errors, plt):
 
     _ax[0, 0].set_title(f"Errores de entrenamiendo, validación y test")
 
-    # print("")
-
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Conclusión
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    A la hora de entrenar la red encontramos varios inconvenientes:
+
+    - Al utilizar un learning rate muy alto, se observaba en las curvas de error que el error de testeo era muy alto (comparado con los resultados del análisis del Mitchell). Por ello mismo, fue que lo bajamos de $0.25$ a $0.001$.
+    - Utilizabamos un valor de super-épocas y sub-épocas muy alto, lo que derivaba en que el entrenamiento tardara mucho tiempo. Debido a esto fue que bajamos de $400$ a $200$ super-épocas y de $50$ a $20$ sub-épocas.
+
+    Antes de comparar el resultado obtenido con los resultados del Mitchell, nos parece necesario remarcar que dentro de ese estudio se utilizaron los siguientes hiper-parámetros para entrenar la red:
+
+    - 3 neuronas en la capa intermedia. Además, nombra que podría aumentarse su precisión en $1\%$ o $2\%$ si se utilizan 30 neuronas.
+    - Un learning rate igual a $0.3$.
+    - Un momentum de $0.3$
+    - 50 sub-épocas y 1 super-época.
+
+    Además especifica que se utiliza el método de `full gradient descent`. A su vez en el Mitchell se explica que los pesos de entrada son son inicializados en cero, y que los pesos de salida inicializados de forma aleatoria (pero en valores pequeños).
+
+    Habiendo dicho esto, tenemos que tanto el resultado del Mitchell y nuestro resultado obtuvieron un error del $10\%$ más allá de que variaran los hiper-parámetros.
+    """)
     return
 
 
